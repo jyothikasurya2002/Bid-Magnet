@@ -1,0 +1,26 @@
+name: Daily PLACSP ingest
+
+on:
+  schedule:
+    - cron: "30 5 * * *"   # 05:30 UTC every day
+  workflow_dispatch: {}
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: data-pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "psycopg[binary]"
+      # ~500 entries per page; 3 pages covers more than a day of updates
+      - run: python placsp_fetch.py live --pages 3
+      - run: python build_dataset.py raw/live --segments core,hardware,telecom_network
+      - run: python load_supabase.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

@@ -1,0 +1,493 @@
+{
+  "summary": {
+    "object_en": "Standard SaaS cemetery-management application for the La Vall d'Uixó town council: hosting, setup, data migration from the current provider, interactive cemetery map, training, support, maintenance, backups and data hand-back at the end. No custom development.",
+    "object_es": "Suministro en modalidad SaaS de una aplicación estándar de gestión integral del cementerio municipal, incluyendo alojamiento, configuración, migración de datos, plano interactivo, formación, soporte, mantenimiento, copias de seguridad y reversibilidad.",
+    "contract_type": "Suministro (supply), procedimiento abierto simplificado abreviado (art. 159.6 LCSP)",
+    "budget_no_tax": 3704.18,
+    "duration": "25 months: 1 month implementation (Nov 2026) + 24 months SaaS service (1 Dec 2026 – 30 Nov 2028)",
+    "extensions": "One extension of 23 months (1 Dec 2028 – 31 Oct 2030); maximum total 48 months. Must be notified at least 2 months before the end; no tacit renewal.",
+    "lots": [],
+    "submission": "Electronic only, single envelope, via the PLACSP bid preparation tool, signed electronically. Whole bid max 38 MB, individual signed files max 5 MB."
+  },
+  "key_dates": [
+    {
+      "label": "Bid deadline (from PLACSP notice: 20 Oct 2026 23:59). Pliego: at least 10 business days from publication, until 23:59",
+      "date": "2026-10-20",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 17,
+      "quote": "inferior a DIEZ DÍAS HÁBILES (10) días a contar desde la publicación del anuncio en la PLACSP, hasta las 23.59H",
+      "verified": true
+    },
+    {
+      "label": "Awardee must submit supporting documents within 7 business days of being requested",
+      "date": null,
+      "doc": "pcap__Pliego Administrativo",
+      "page": 26,
+      "quote": "económicamente más ventajosa, de acuerdo con el artículo 150.2 de la LCSP, en un plazo dentro de SIETE (7) días hábiles",
+      "verified": true
+    },
+    {
+      "label": "Contract start (implementation month begins)",
+      "date": "2026-11-01",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 10,
+      "quote": "El contrato se iniciará el 1 de noviembre de 2026, siempre que se haya formalizado con anterioridad",
+      "verified": true
+    },
+    {
+      "label": "SaaS service go-live",
+      "date": "2026-12-01",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 10,
+      "quote": "Veinticuatro meses de prestación ordinaria del servicio SaaS, desde el 1 de diciembre de 2026 hasta el 30 de noviembre de 2028.",
+      "verified": true
+    },
+    {
+      "label": "End of initial term (renewal radar: possible re-tender or extension decision ~Sep 2028)",
+      "date": "2028-11-30",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 10,
+      "quote": "La eventual prórroga tendrá una duración de veintitrés meses, desde el 1 de diciembre de 2028 hasta el 31 de octubre de 2030.",
+      "verified": true
+    }
+  ],
+  "envelopes": [
+    {
+      "name": "Sobre único: Documentación administrativa y criterios evaluables mediante fórmula",
+      "contents": [
+        "Anexo II – Declaración responsable",
+        "DEUC (European Single Procurement Document)",
+        "UTE commitment document (only if bidding as a temporary joint venture)",
+        "Anexo III – Declaración responsable convenio de aplicación",
+        "Anexo V – DACI (no conflict of interest)",
+        "Anexo VI – Declaración sobre servidores",
+        "ROLECE registration certificate",
+        "Anexo I – Oferta económica (price + service-level and training commitments)",
+        "Technical compliance sheet (ficha de cumplimiento técnico)"
+      ],
+      "doc": "pcap__Pliego Administrativo",
+      "page": 14,
+      "quote": "Las ofertas se presentarán en un SOBRE ÚNICO que deberá contener un único archivo electrónico: la documentación administrativa y los criterios evaluables mediante fórmula.",
+      "verified": true
+    }
+  ],
+  "mandatory_documents": [
+    {
+      "name": "Anexo II – Declaración responsable",
+      "description_en": "Signed responsible declaration (template in Annex II).",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 14,
+      "quote": "De conformidad con lo que dispone el artículo 159 de la LCSP, el licitador deberá presentar",
+      "verified": true
+    },
+    {
+      "name": "DEUC",
+      "description_en": "European Single Procurement Document (ESPD).",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 14,
+      "quote": "Anexo II. Declaración responsable. 2. DEUC.",
+      "verified": true
+    },
+    {
+      "name": "UTE commitment (if applicable)",
+      "description_en": "Only for joint bids: each company's details, share, commitment to form a UTE if awarded, and a single representative.",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 14,
+      "quote": "Documento de compromiso de constituir una Unión Temporal de Empresas",
+      "verified": true
+    },
+    {
+      "name": "Anexo III – Declaración responsable convenio de aplicación",
+      "description_en": "Declaration of the collective labour agreement that applies to staff.",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 15,
+      "quote": "Anexo III Declaración responsable convenio de aplicación.",
+      "verified": true
+    },
+    {
+      "name": "Anexo V – DACI",
+      "description_en": "Declaration of absence of conflict of interest.",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 15,
+      "quote": "DACI. Declaración de ausencia de Conflicto de interés. Anexo V.",
+      "verified": true
+    },
+    {
+      "name": "Anexo VI – Declaración sobre servidores",
+      "description_en": "State whether hosting/servers will be subcontracted and to whom, plus data-protection commitments.",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 15,
+      "quote": "Anexo VI Declaración sobre servidores",
+      "verified": true
+    },
+    {
+      "name": "ROLECE registration certificate",
+      "description_en": "Proof of registration in the official State register of bidders (ROLECE). Check you are registered before the deadline.",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 15,
+      "quote": "Certificado de Inscripción en el ROLECE.",
+      "verified": true
+    },
+    {
+      "name": "Anexo I – Oferta económica",
+      "description_en": "Price offer (excl. VAT) broken down into implementation/migration and annual SaaS fee, plus service-level and extra-training commitments.",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 15,
+      "quote": "Anexo I. Oferta económica.",
+      "verified": true
+    },
+    {
+      "name": "Ficha de cumplimiento técnico",
+      "description_en": "Short technical sheet + table showing the product meets every minimum requirement of the technical specs (product name, maker, version, SaaS provider, public URL, standard product). Not scored, but failure means exclusion.",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 15,
+      "quote": "Ficha de cumplimiento técnico de la aplicación",
+      "verified": true
+    },
+    {
+      "name": "ENS commitment declaration",
+      "description_en": "Responsible declaration committing to comply with Spain's National Security Framework (ENS).",
+      "envelope": "Sobre único",
+      "when": "with_bid",
+      "doc": "ppt__Pliego de prescripciones tecnicas",
+      "page": 8,
+      "quote": "En su oferta, la empresa licitadora presentará una declaración responsable comprometiéndose al cumplimiento del Esquema Nacional de Seguridad.",
+      "verified": true
+    },
+    {
+      "name": "Company deeds / ID",
+      "description_en": "Articles of incorporation registered in the Mercantile Register showing a corporate purpose that fits the contract (or DNI for sole traders).",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 26,
+      "quote": "Si se trata de personas jurídicas deberán presentar escritura de constitución en la que figure que su objeto social se adapta",
+      "verified": true
+    },
+    {
+      "name": "Power of attorney (bastanteo)",
+      "description_en": "If signing through a representative: proof of powers, validated by the council's General Secretariat.",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 26,
+      "quote": "Documentos acreditativos de la representación",
+      "verified": true
+    },
+    {
+      "name": "Tax and Social Security certificates",
+      "description_en": "Certificates showing you are up to date with tax and Social Security obligations.",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 27,
+      "quote": "Certificación de hallarse al corriente de sus obligaciones tributarias y con la Seguridad Social.",
+      "verified": true
+    },
+    {
+      "name": "Equality plan (if >50 employees)",
+      "description_en": "Equality plan under Ley Orgánica 3/2007, only for companies with more than 50 employees.",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 27,
+      "quote": "Plan de igualdad conforme a lo dispuesto en el artículo 45 de la Ley Orgánica",
+      "verified": true
+    },
+    {
+      "name": "Third-party data sheet + bank ownership certificate",
+      "description_en": "Council supplier form and certificate of bank account ownership.",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 27,
+      "quote": "Hoja de mantenimiento de terceros y certificación titularidad bancaria",
+      "verified": true
+    },
+    {
+      "name": "Anexo IX, Anexo XIII, Anexo XV",
+      "description_en": "Special execution conditions declaration (IX), subcontractors declaration (XIII), pre-signature declaration (XV).",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 28,
+      "quote": "Condición especial de ejecución del contrato, cláusula 32 del PCAP. : Anexo IX.",
+      "verified": true
+    },
+    {
+      "name": "Server location and hosting provider disclosure + data processing agreement",
+      "description_en": "Before signing: where servers are, where support is done from, hosting provider, sub-processors; sign the data processing agreement.",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "ppt__Pliego de prescripciones tecnicas",
+      "page": 9,
+      "quote": "Antes de la formalización del contrato, la empresa adjudicataria deberá informar sobre",
+      "verified": true
+    },
+    {
+      "name": "ENS conformity certificate (before go-live)",
+      "description_en": "Valid ENS conformity covering the application and services, kept valid for the whole contract. ISO certificates do not replace it. Level is contradictory between documents (see review notes).",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 74,
+      "quote": "Antes de la puesta en producción, la entidad adjudicataria deberá aportar una certificación de conformidad con el ENS, categoría MEDIA o superior",
+      "verified": true
+    }
+  ],
+  "eligibility": [
+    {
+      "category": "financial_solvency",
+      "requirement_en": "No financial or technical solvency needs to be proven (exempt under art. 159.6.b LCSP). Good for SMEs and new companies.",
+      "threshold": null,
+      "alternative": null,
+      "doc": "pcap__Pliego Administrativo",
+      "page": 26,
+      "quote": "Se eximirá a los licitadores de la acreditación de la solvencia económica y financiera y técnica o profesional.",
+      "verified": true
+    },
+    {
+      "category": "classification",
+      "requirement_en": "No business classification required.",
+      "threshold": null,
+      "alternative": null,
+      "doc": "pcap__Pliego Administrativo",
+      "page": 12,
+      "quote": "En cumplimiento a lo dispuesto en el art. 77 LCSP, no es exigible la clasificación del contratista.",
+      "verified": true
+    },
+    {
+      "category": "registry",
+      "requirement_en": "Must be registered in ROLECE (State official register of bidders) and attach the certificate.",
+      "threshold": null,
+      "alternative": null,
+      "doc": "pcap__Pliego Administrativo",
+      "page": 15,
+      "quote": "Certificado de Inscripción en el ROLECE.",
+      "verified": true
+    },
+    {
+      "category": "certification",
+      "requirement_en": "ENS (National Security Framework) conformity covering the application and the services, before go-live and for the whole contract. Hosting provider's ENS alone is not enough.",
+      "threshold": "ENS category MEDIA certification (PCAP Annex VII) vs. BÁSICA declaration (PPT A.11): contradictory",
+      "alternative": "ISO 27001 or other standards accepted only as complementary evidence; they do not replace ENS",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 74,
+      "quote": "Las certificaciones ISO u otros estándares de seguridad podrán aportarse como documentación complementaria, pero no sustituirán la certificación de conformidad con el ENS.",
+      "verified": true
+    },
+    {
+      "category": "other",
+      "requirement_en": "Must be an existing standard SaaS product on the market; mandatory functions cannot depend on future or custom development.",
+      "threshold": null,
+      "alternative": null,
+      "doc": "pcap__Pliego Administrativo",
+      "page": 3,
+      "quote": "No se contempla el desarrollo de una aplicación a medida.",
+      "verified": true
+    },
+    {
+      "category": "team",
+      "requirement_en": "Assign at least: an in-house project coordinator, a functional consultant specialised in the product, developers specialised in the product, and a structured helpdesk sized to meet the SLAs.",
+      "threshold": null,
+      "alternative": null,
+      "doc": "ppt__Pliego de prescripciones tecnicas",
+      "page": 13,
+      "quote": "La empresa adjudicataria deberá asignar al menos un coordinador del proyecto, integrado en su plantilla",
+      "verified": true
+    },
+    {
+      "category": "other",
+      "requirement_en": "Minimum service levels: 99% monthly availability, daily backups kept 30 days, RPO 24h, RTO 8h, yearly restore test; P1 incidents answered in 1 business hour, workaround in 4h, resolved in 8h. Support in Spanish, weekdays, at least 9:00–14:00.",
+      "threshold": "99% availability; P1 1h / 4h / 8h",
+      "alternative": null,
+      "doc": "ppt__Pliego de prescripciones tecnicas",
+      "page": 9,
+      "quote": "99 %, excluidos los mantenimientos programados y las causas ajenas a la adjudicataria",
+      "verified": true
+    },
+    {
+      "category": "other",
+      "requirement_en": "Company's corporate purpose must relate directly to the contract; full legal capacity and no prohibition to contract.",
+      "threshold": null,
+      "alternative": null,
+      "doc": "pcap__Pliego Administrativo",
+      "page": 5,
+      "quote": "cuya finalidad o actividad tenga relación directa con el objeto del contrato",
+      "verified": true
+    }
+  ],
+  "award_criteria": [
+    {
+      "name": "A. Oferta económica",
+      "kind": "price",
+      "points": 70,
+      "how_scored_en": "Proportional to your discount: 70 × (your % discount / biggest % discount). Bidding at the budget scores 0; the biggest discount scores 70.",
+      "envelope": "Sobre único",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 19,
+      "quote": "Se valorará con un máximo de 70 puntos la oferta económica correspondiente a la duración inicial del contrato, IVA excluido.",
+      "verified": true
+    },
+    {
+      "name": "B.1 Disponibilidad mensual",
+      "kind": "automatic_formula",
+      "points": 5,
+      "how_scored_en": "≥ 99.90% = 5 pts; ≥ 99.75% = 2.5 pts; ≥ 99.50% = 0 pts.",
+      "envelope": "Sobre único",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 20,
+      "quote": "Igual o superior al 99,90 %",
+      "verified": true
+    },
+    {
+      "name": "B.2 Tiempo de respuesta P1",
+      "kind": "automatic_formula",
+      "points": 5,
+      "how_scored_en": "Critical-incident response ≤ 30 business minutes = 5 pts; ≤ 45 min = 2.5 pts; ≤ 1 h = 0 pts.",
+      "envelope": "Sobre único",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 20,
+      "quote": "B.2. Tiempo de respuesta ante incidencias críticas P1",
+      "verified": true
+    },
+    {
+      "name": "B.3 Solución provisional P1",
+      "kind": "automatic_formula",
+      "points": 5,
+      "how_scored_en": "Workaround ≤ 2 business hours = 5 pts; ≤ 3 h = 2.5 pts; ≤ 4 h = 0 pts.",
+      "envelope": "Sobre único",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 20,
+      "quote": "B.3. Tiempo de solución provisional ante incidencias críticas P1",
+      "verified": true
+    },
+    {
+      "name": "B.4 Resolución P1",
+      "kind": "automatic_formula",
+      "points": 5,
+      "how_scored_en": "Resolution ≤ 4 business hours = 5 pts; ≤ 6 h = 2.5 pts; ≤ 8 h = 0 pts.",
+      "envelope": "Sobre único",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 21,
+      "quote": "B.4. Tiempo objetivo de resolución ante incidencias críticas P1",
+      "verified": true
+    },
+    {
+      "name": "C. Formación adicional",
+      "kind": "automatic_formula",
+      "points": 10,
+      "how_scored_en": "Extra live training at no cost: ≥ 8 extra hours = 10 pts; 4–8 extra hours = 5 pts; < 4 = 0 pts.",
+      "envelope": "Sobre único",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 21,
+      "quote": "Se valorará con un máximo de 10 puntos el compromiso de impartir formación síncrona adicional",
+      "verified": true
+    }
+  ],
+  "price": {
+    "formula": "Pᵢ = 70 × (Bᵢ / Bmáx); Bᵢ = [(PBL − Oᵢ) / PBL] × 100",
+    "formula_explained_en": "Score depends on your discount relative to the best discount, not on absolute price. If you have the deepest discount you get all 70 points. Offers above the budget (3,704.18 € excl. VAT) are rejected. Results rounded to 2 decimals.",
+    "abnormally_low_rule": "Art. 85 RGLCAP: 1 bidder: >25 points below budget; 2 bidders: >20 points below the other; 3 bidders: >10 points below the average (excluding the highest if >10 above average), and any discount >25 points; 4+ bidders: >10 points below the average (recomputed without outliers).",
+    "provisional_guarantee": "Not required",
+    "definitive_guarantee": "Not required (art. 159.6.f LCSP)",
+    "doc": "pcap__Pliego Administrativo",
+    "page": 19,
+    "quote": "La puntuación se calculará mediante la siguiente fórmula",
+    "verified": true
+  },
+  "exclusion_risks": [
+    {
+      "risk_en": "Price above the base budget (3,704.18 € excl. VAT) is not admitted.",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 19,
+      "quote": "No serán admitidas las ofertas que superen el presupuesto base de licitación.",
+      "verified": true
+    },
+    {
+      "risk_en": "Offering service levels below the technical-spec minimums gets the bid excluded.",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 21,
+      "quote": "Las ofertas que indiquen niveles inferiores a los mínimos obligatorios establecidos en el Pliego de Prescripciones Técnicas serán excluidas.",
+      "verified": true
+    },
+    {
+      "risk_en": "If the technical sheet shows (or can't prove after a clarification request) that the product misses any mandatory requirement, the bid is excluded.",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 17,
+      "quote": "Procederá la exclusión cuando la documentación aportada, o la comprobación efectuada, evidencie de manera objetiva",
+      "verified": true
+    },
+    {
+      "risk_en": "Bids not submitted through the PLACSP tool (or late) are not accepted. Documents must be in Spanish or Valencian, or officially translated.",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 13,
+      "quote": "No será admitida ninguna proposición, manual o electrónica, remitida por otra vía o procedimiento",
+      "verified": true
+    },
+    {
+      "risk_en": "Whole signed bid over 38 MB, or any signed file over 5 MB, can't be submitted.",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 14,
+      "quote": "El conjunto de la oferta debidamente firmada no podrá superar los 38 MB",
+      "verified": true
+    },
+    {
+      "risk_en": "Submitting more than one bid, or bidding alone and also in a UTE, voids all your bids.",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 12,
+      "quote": "La infracción de estas normas dará lugar a la no admisión de todas las propuestas por él suscritas",
+      "verified": true
+    },
+    {
+      "risk_en": "If the PLACSP receipt says 'HUELLA ELECTRÓNICA', you have 24 hours to complete the submission or the bid counts as withdrawn.",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 13,
+      "quote": "De no efectuarse esta segunda remisión en el plazo indicado se considerara que la oferta ha sido retirada.",
+      "verified": true
+    },
+    {
+      "risk_en": "Failing to sign the contract for reasons attributable to you costs a 3% penalty on the base budget and the award passes to the next bidder.",
+      "doc": "pcap__Pliego Administrativo",
+      "page": 28,
+      "quote": "se le exigirá el importe del 3% del presupuesto base de licitación",
+      "verified": true
+    }
+  ],
+  "review_notes": [
+    "CONTRADICTION – ENS level: PCAP Annex VII (p.74) and penalties (p.35) require an ENS certification of category MEDIA or higher; the PPT (A.11, p.8) classifies the system as BÁSICA and accepts a BÁSICA declaration. Ask the council for clarification before bidding.",
+    "CONTRADICTION – minimum training: PCAP criterion C (p.21) refers to 'doce horas mínimas' in the PPT, but the PPT (A.16, p.11) sets a minimum of four hours. Affects how many extra hours earn 10 points.",
+    "CONTRADICTION – availability: PPT minimum is 99% (p.9), but the PCAP scoring table (p.20) starts at 99.50% for 0 points. Clarify whether 99%–99.49% is admissible.",
+    "INCONSISTENCY – extension length: 23 months in clause 8 (p.10) vs. 'prórroga prevista de 24 meses' in the estimated-value table (p.8).",
+    "Very small contract: 3,704.18 € excl. VAT for 25 months (estimated value 6,173.63 € incl. extension). Only worth it for vendors who already have a cemetery-management SaaS product.",
+    "Migration depends on the outgoing provider's exports; defects in source data are not attributable to the awardee if documented (PPT p.11)."
+  ],
+  "_meta": {
+    "tender_id": "20602902",
+    "documents": [
+      "pcap__Pliego Administrativo.pdf",
+      "ppt__Pliego de prescripciones tecnicas.pdf"
+    ],
+    "pages": 117,
+    "citations": 47,
+    "citations_verified": 47
+  }
+}

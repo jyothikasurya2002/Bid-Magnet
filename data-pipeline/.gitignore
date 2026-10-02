@@ -1,0 +1,6 @@
+.env
+raw/
+out/*
+!out/extractions/
+__pycache__/
+*.part

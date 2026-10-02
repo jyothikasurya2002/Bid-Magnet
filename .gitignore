@@ -1,0 +1,5 @@
+.DS_Store
+# Business documents stay out of the code repo
+/*.docx
+/*.pdf
+.claude/settings.local.json
