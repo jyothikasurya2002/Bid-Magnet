@@ -21,6 +21,7 @@ from psycopg.types.json import Jsonb
 from build_dataset import region_of
 
 ROOT = Path(__file__).parent
+BATCH = 200
 
 TENDER_COLS = [
     "id", "folder_id", "title", "link", "updated", "status", "status_label", "buyer_name", "buyer_nif",
@@ -74,21 +75,33 @@ def main() -> None:
               f"on conflict (id) do update set {updates}, ingested_at = now() "
               f"where tenders.updated is null or excluded.updated >= tenders.updated returning id")
 
+    # Batched: executemany pipelines the statements, so a batch costs a few round trips
+    # instead of several per tender. Each batch is committed, so an interrupted run keeps
+    # its progress and a re-run skips nothing it shouldn't (upsert is newer-wins).
     written = 0
     with psycopg.connect(url) as conn, conn.cursor() as cur:
-        for t in tenders:
-            cur.execute(upsert, tender_row(t))
-            if cur.fetchone() is None:   # stored version is newer; leave it alone
-                continue
-            written += 1
+        for start in range(0, len(tenders), BATCH):
+            batch = tenders[start:start + BATCH]
+            cur.executemany(upsert, [tender_row(t) for t in batch], returning=True)
+            ids = []
+            while True:
+                row = cur.fetchone()
+                if row:              # no row = stored version is newer; leave it alone
+                    ids.append(row[0])
+                if not cur.nextset():
+                    break
+            keep = set(ids)
             for table, (key, ccols) in CHILDREN.items():
-                cur.execute(f"delete from {table} where tender_id = %s", [t["id"]])
-                rows = [[t["id"]] + [child_value(c, i) for c in ccols] for i in t[key]]
+                cur.execute(f"delete from {table} where tender_id = any(%s)", [ids])
+                rows = [[t["id"]] + [child_value(c, i) for c in ccols]
+                        for t in batch if t["id"] in keep for i in t[key]]
                 if rows:
                     cur.executemany(
                         f"insert into {table} (tender_id, {', '.join(ccols)}) "
                         f"values ({', '.join(['%s'] * (len(ccols) + 1))})", rows)
-        conn.commit()
+            conn.commit()
+            written += len(ids)
+            print(f"  {min(start + BATCH, len(tenders))}/{len(tenders)} processed, {written} written", flush=True)
         print(f"upserted {written} of {len(tenders)} tenders")
 
         # Checklists from extract_tender.py (latest file per tender replaces the stored one)
