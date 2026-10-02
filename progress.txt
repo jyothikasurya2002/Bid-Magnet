@@ -294,6 +294,69 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
     those quotes against the tender's XML record.
 
 ----------------------------------------------------------------------
+7d. THE PRODUCT FROM A CUSTOMER'S VIEW (and what exists today)
+----------------------------------------------------------------------
+  Example customer: "Soluciones Marta S.L.", 25-person software company in
+  Valencia (web apps, IT maintenance), ISO 27001, no ENS, ~1.5M EUR
+  turnover, never bid before.
+
+  Screen 1  PROFILE (once): services, region, size/turnover, certifications
+            (ISO 27001 yes, ENS no), ROLECE yes/no, 3-5 past projects.
+            Drives everything else.
+            Status: not built (needs a companies table + form).
+
+  Screen 2  "TENDERS FOR YOU" FEED: ranked list with a fit score and reasons,
+            e.g.  92  Gandia municipal software  48k EUR  12 days
+                      ok sector, ok region, ok no ENS, warn ROLECE needed
+            plus filters and daily email alerts.
+            Status: data READY (3,754 IT tenders, 406 open); fit score not
+            built; screen not built; daily job not switched on.
+
+  Screen 3  TENDER PAGE "Should we bid?": plain-English summary;
+            eligibility table (requirement vs. you: meets / gap / partner);
+            how it's scored; buyer history (past winners, bidder count,
+            typical discount, current holder); warnings (contradictions);
+            Go / No-go / Watch with a reason.
+            Status: summary/scoring/eligibility/warnings READY for 3 demo
+            tenders; buyer history data loaded but not summarised (1 month,
+            more downloading); you-vs-requirement needs Screen 1; decision
+            buttons not built.
+
+  Screen 4  BID CHECKLIST: tick-list of every document per envelope, each
+            linked to the PDF page; "only if you win" list; "how bids get
+            thrown out here".
+            Status: data READY for 3 demo tenders (116/116 citations
+            verified); other tenders need the Claude API or Claude Code;
+            screen + PDF viewer not built.
+
+  Screen 5  PRICE SIMULATOR: slider -> price points, abnormally-low warning,
+            buyer's historical discounts.
+            Status: formulas extracted for 3 tenders; historical discounts in
+            data; simulator not built (simple frontend maths).
+
+  Screen 6  DOCUMENT VAULT + PROPOSAL DRAFT: stored certificates with expiry
+            alerts; first draft of the technical proposal from past projects.
+            Status: not built (later; show as mockup).
+
+  Screen 7  SUBMIT + RESULTS: she submits on PLACSP herself (we prepare, we
+            don't submit). Later: "You came 2nd of 3, winner bid 16% below".
+            Status: award data arrives with the feed; linking to her bid not
+            built.
+
+  Summary:            DATA (Jyothika)            SCREEN (frontend)
+    1 Profile         not built                  not built
+    2 Feed            READY (3,754 tenders)      not built  + fit score not built
+    3 Tender page     READY for 3 demo tenders   not built  + buyer history partial
+    4 Checklist       READY for 3 demo tenders   not built
+    5 Price sim       READY (formulas + history) not built
+    6 Vault/drafting  not built                  not built
+    7 Results         READY (award data)         not built
+  -> The data foundation is solid; nothing is visible yet. For Saturday,
+     Miguel's mockups should use the real data from the 3 demo tenders.
+  -> Highest-value next data work: fit score (Screen 2), buyer profiles
+     (Screen 3), and a demo company profile both can use.
+
+----------------------------------------------------------------------
 8. SETUP NOTES & FIXES
 ----------------------------------------------------------------------
   - Supabase project in Ireland (eu-west-1): EU, OK for GDPR.
