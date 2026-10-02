@@ -37,6 +37,8 @@ uv run --with "psycopg[binary]" load_supabase.py
 - **`upcoming_renewals`:** contracts ending in the next 12 months.
 - **`match_tenders(company)`:** fit score from 0 to 100, with reasons.
 
+- **`tender_bids`, `tender_bid_reports`, `bidder_history`:** every bidder's price and score, read from award resolutions and committee minutes (`out/bids/<id>.json`, checked with `bid_results.py`).
+
 How the frontend calls them: **[API.md](API.md)**.
 
 ## Outputs (`out/`)

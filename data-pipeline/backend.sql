@@ -300,7 +300,27 @@ revoke all on competitor_stats from anon;
 grant select on competitor_stats to authenticated;
 
 -- --------------------------------------------------------------------------
--- 7. Demo company for the showcase (owner = null → visible to every signed-in user)
+-- 7. Bidder history from full bid results (tender_bids): how each company bids,
+--    including the tenders it LOST. Grows as more award reports are read.
+-- --------------------------------------------------------------------------
+create or replace view bidder_history with (security_invoker = true) as
+select
+  coalesce(b.bidder_nif, b.bidder_name)                         as bidder_key,
+  max(b.bidder_nif)                                             as bidder_nif,
+  max(b.bidder_name)                                            as bidder_name,
+  count(*)                                                      as bids,
+  count(*) filter (where b.status = 'awarded')                  as wins,
+  count(*) filter (where b.status = 'excluded')                 as exclusions,
+  round(avg(b.rank), 1)                                         as avg_rank,
+  round(avg(1 - b.offer_no_tax / nullif(t.budget_no_tax, 0)), 3) as avg_discount,   -- vs. budget
+  round(avg(b.tech_score), 2)                                   as avg_tech_score,
+  array_agg(distinct b.exclusion_reason) filter (where b.exclusion_reason is not null) as exclusion_reasons
+from tender_bids b join tenders t on t.id = b.tender_id
+where b.lot_id is null
+group by 1;
+
+-- --------------------------------------------------------------------------
+-- 8. Demo company for the showcase (owner = null → visible to every signed-in user)
 -- --------------------------------------------------------------------------
 insert into companies (id, owner, name, description, cpv_prefixes, keywords, regions, include_national,
                        annual_turnover, employees, certifications, has_classification, rolece, max_budget)

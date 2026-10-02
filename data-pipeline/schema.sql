@@ -112,6 +112,36 @@ create table if not exists tender_requirements (
 );
 create index if not exists tender_requirements_tender on tender_requirements (tender_id);
 
+-- Full bid results read from award resolutions / committee minutes (bid_results.py):
+-- every bidder, not just the winner. Losing bidders' prices and scores exist only in PDFs.
+create table if not exists tender_bids (
+  id                bigint generated always as identity primary key,
+  tender_id         text references tenders(id) on delete cascade,
+  lot_id            text,
+  bidder_name       text not null,
+  bidder_nif        text,              -- matched from past awards; null if unknown
+  offer_no_tax      numeric,
+  tech_score        numeric,           -- judgement-based (sobre B)
+  formula_score     numeric,           -- all formula criteria incl. price
+  price_score       numeric,
+  total_score       numeric,
+  rank              int,
+  status            text check (status in ('awarded', 'ranked', 'excluded')),
+  exclusion_reason  text,              -- abnormally_low_not_justified, below_technical_threshold, ...
+  source_doc        text,
+  source_page       int,
+  source_quote      text,
+  verified          boolean
+);
+create index if not exists tender_bids_tender on tender_bids (tender_id);
+create index if not exists tender_bids_nif on tender_bids (bidder_nif);
+
+create table if not exists tender_bid_reports (   -- per-tender summary + insights of the bid results
+  tender_id  text primary key references tenders(id) on delete cascade,
+  output     jsonb not null,
+  created_at timestamptz default now()
+);
+
 -- Output of the Claude PDF extraction (checklist with page citations)
 create table if not exists tender_extractions (
   id          bigint generated always as identity primary key,
@@ -127,7 +157,7 @@ do $$
 declare t text;
 begin
   foreach t in array array['tenders','tender_criteria','tender_documents','tender_results',
-                           'tender_requirements','tender_extractions'] loop
+                           'tender_requirements','tender_extractions','tender_bids','tender_bid_reports'] loop
     execute format('alter table %I enable row level security', t);
     if not exists (select 1 from pg_policies where tablename = t and policyname = 'read for signed-in users') then
       execute format('create policy "read for signed-in users" on %I for select to authenticated using (true)', t);

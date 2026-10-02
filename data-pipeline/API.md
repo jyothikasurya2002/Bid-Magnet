@@ -192,6 +192,41 @@ const { data: top } = await supabase.from('competitor_stats').select('*').order(
 
 Link from `buyer_stats.top_winners[].nif` or `upcoming_renewals.incumbent_nif`.
 
+## Full bid results: all bidders, not just the winner (`tender_bids`, `tender_bid_reports`, `bidder_history`)
+These are read from award resolutions and committee minutes. **Only a few tenders so far** (`18477548`, `19526065`); the coverage grows over time.
+
+```ts
+// every bid on a tender, best first
+const { data: bids } = await supabase.from('tender_bids').select('*').eq('tender_id', id).order('rank', { nullsFirst: false })
+
+// summary + plain-English insights for the tender
+const { data: rep } = await supabase.from('tender_bid_reports').select('output').eq('tender_id', id).maybeSingle()
+
+// how a company bids across tenders, including the ones it LOST
+const { data: h } = await supabase.from('bidder_history').select('*').eq('bidder_nif', nif).maybeSingle()
+```
+
+**`tender_bids` fields:**
+
+| Field | Meaning |
+|---|---|
+| `bidder_name`, `bidder_nif` | Who bid; `bidder_nif` is null if unknown |
+| `offer_no_tax` | Their price, excluding VAT |
+| `tech_score` | Judgement-based score |
+| `formula_score` | All formula criteria, including price |
+| `price_score` | Price criterion only |
+| `total_score` | Final score |
+| `rank` | Final position |
+| `status` | `awarded` \| `ranked` \| `excluded` |
+| `exclusion_reason` | `abnormally_low_not_justified` \| `below_technical_threshold` \| `price_info_in_technical_envelope` |
+| `source_doc`, `source_page`, `source_quote`, `verified` | The citation |
+
+**`tender_bid_reports.output`:**
+- `summary`: `budget_no_tax`, `bids_received`, `bids_ranked`, `scoring`, `tech_threshold`, `price_formula`, `abnormally_low`, `winner`, `winning_offer_no_tax`, `winning_discount`
+- `insights[]`: plain-English takeaways
+
+**`bidder_history` fields:** `bids`, `wins`, `exclusions`, `avg_rank`, `avg_discount` (vs. budget), `avg_tech_score`, `exclusion_reasons`
+
 ## Renewal radar (`upcoming_renewals`)
 ```ts
 const { data } = await supabase.from('upcoming_renewals').select('*')

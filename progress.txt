@@ -54,6 +54,8 @@ The company still submits on the official government platform itself.
   Renewal radar (contracts ending soon)  Built
   Search box (Spanish-aware)             Built
   Document checklists with page refs     3 demo tenders done
+  Full bid results (ALL bidders' prices  2 tenders done (39 bids); method
+  and scores, incl. losers)              ready to scale
   Website / app screens                  Not started (frontend team)
 
 
@@ -68,6 +70,11 @@ The company still submits on the official government platform itself.
   - In competitive tenders, winners bid about 10–14% below the budget.
   - 90% of awards show who won; 99% show how many bids came in.
   - Database size: see the storage note in section 7.
+  - Example of full bid results: an AI assistant tender in Aragón drew 19
+    bids; 9 were thrown out (3 put price info in the wrong envelope, 4
+    scored too low technically, 2 priced too low). The winner bid 35%
+    below budget. In Castellón, 20 bids; the top 3 were within 0.64
+    points; Telefónica came 9th, Deloitte was excluded.
 
 
 5. THE THREE DEMO TENDERS
@@ -92,6 +99,8 @@ The company still submits on the official government platform itself.
     [ ] Send the frontend team: data-pipeline/API.md, the 3 checklist files
         (data-pipeline/out/extractions/), Supabase Project URL + anon key
   Data/backend (Claude):
+    [ ] Read more award reports (1,100+ IT tenders have them) to grow
+        the bid-results data
     [ ] Put the PDFs of open tenders into Supabase Storage
     [ ] Smarter matching by meaning (AI embeddings)
     [ ] Regional platforms (Catalonia, Basque Country, Navarre) and EU TED
@@ -136,6 +145,8 @@ The company still submits on the official government platform itself.
                        that changed; refreshes the statistics views.
     extract_tender.py  defines the checklist format and checks every page
                        reference against the PDF ("verified").
+    bid_results.py     checks the page references of full bid results and
+                       links bidders to their tax ID (NIF) via past awards.
 
   8c. Database tables (Supabase)
     tenders               one row per tender (title, buyer, budget, deadline,
@@ -146,6 +157,9 @@ The company still submits on the official government platform itself.
                           minutes, evaluation reports...)
     tender_results        who won, how many bids, lowest/highest bid, amount
     tender_extractions    the cited checklists (JSON)
+    tender_bids           EVERY bidder on a tender: price, scores, rank,
+                          why excluded (from award reports; page-cited)
+    tender_bid_reports    summary + insights per tender's bid results
     companies             customer profiles (each user sees only their own)
     tender_decisions      Go / No-go / Watch per company and tender
 
@@ -155,6 +169,8 @@ The company still submits on the official government platform itself.
     buyer_stats             per buyer: typical bidders, discount, top winners
     competitor_stats        per winning company: wins, value, regions, buyers
     upcoming_renewals       contracts ending in the next 12 months + incumbent
+    bidder_history          how each company bids across tenders, including
+                            the ones it lost (avg rank, discount, exclusions)
     Security: row-level security; logged-out visitors see nothing; users
     only see their own company profiles and decisions.
 
@@ -171,6 +187,9 @@ The company still submits on the official government platform itself.
     - 3 demo checklists with 116 verified page references.
     - Storage optimisation (154 MB -> 128 MB while doubling the data).
     - API.md so the frontend can build every screen.
+    - Full bid results from award reports (all bidders, prices, scores,
+      exclusion reasons): the data no public source provides in structured
+      form; 2 tenders / 39 bids so far, all page-verified.
 
   8g. Known limits
     - Only the national platform so far (no Catalonia/Basque/Navarre-only
@@ -184,6 +203,8 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-02  Full bid results from award reports: 2 tenders, 39 bids,
+              all verified; bidder_history; technical section added here.
   2026-10-02  Added January–May 2026 (now 9 months); competitor profiles;
               Spanish search; readable document names; database 154 -> 128 MB.
   2026-10-02  Built the data pipeline; downloaded and cleaned Jun–Sep 2026;

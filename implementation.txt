@@ -61,6 +61,14 @@ PIPELINE (data-pipeline/)
                     "ppt__...") or "placsp_xml" (checked against tenders.jsonl).
                     API mode: claude-opus-5-5, structured output, fallbacks
                     (unused: no key).
+- bid_results.py    verifies out/bids/<id>.json (all bidders from award
+                    resolutions / actas: price, tech/formula/total score, rank,
+                    status, exclusion_reason, citation) and fills bidder_nif by
+                    normalised-name match against winners in tenders.jsonl
+                    (masked NIFs with '*' ignored). Loader -> tender_bids +
+                    tender_bid_reports. View bidder_history aggregates them.
+                    Done: 18477548 (Aragón AI assistant, 19 bids),
+                    19526065 (Castellón data governance, 20 bids).
 - schema.sql        tenders, tender_criteria, tender_documents, tender_results,
                     tender_requirements, tender_extractions (+ RLS: authenticated
                     read). tenders has NO full JSON copy any more (old `raw`
@@ -88,8 +96,10 @@ CURRENT DATA (in Supabase, 128 MB of 500 MB)
   Demo company id 00000000-0000-0000-0000-000000000001 (282 matches).
 - Key stats: median 2 bidders/award; median discount 10% open / 14%
   simplified (competitive only; overall ~5-6% incl. negotiated = 0%).
-- 2,192+ "Informe de valoración" PDFs (evaluation reports with competitor
-  scores) are linked in tender_documents (kind 'general'); not parsed yet.
+- 1,100+ IT tenders (RES/ADJ, >=3 bids) have actas / informes de valoración
+  linked in tender_documents (kind 'general'); the award RESOLUTION
+  (kind 'notice') or the last "Acta" usually holds the full ranking table.
+  Fetch: placsp_fetch.py docs --ids <id> --kinds general,notice
 
 GOTCHAS LEARNED
 - Some PDFs draw checkboxes and tables as IMAGES: text extraction reads every

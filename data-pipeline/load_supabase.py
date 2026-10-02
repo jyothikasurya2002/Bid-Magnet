@@ -125,6 +125,31 @@ def main() -> None:
         conn.commit()
         print(f"loaded {loaded} extractions")
 
+        # Full bid results (bid_results.py): replace per tender
+        loaded = 0
+        for path in sorted((ROOT / "out" / "bids").glob("*.json")):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            tid = data["tender_id"]
+            cur.execute("select 1 from tenders where id = %s", [tid])
+            if cur.fetchone() is None:
+                print(f"  skip bids {tid}: tender not in database")
+                continue
+            cur.execute("delete from tender_bids where tender_id = %s", [tid])
+            cur.executemany(
+                "insert into tender_bids (tender_id, lot_id, bidder_name, bidder_nif, offer_no_tax, tech_score, "
+                "formula_score, price_score, total_score, rank, status, exclusion_reason, source_doc, source_page, "
+                "source_quote, verified) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                [[tid, b.get("lot_id"), b["bidder_name"], b.get("bidder_nif"), b.get("offer_no_tax"), b.get("tech_score"),
+                  b.get("formula_score"), b.get("price_score"), b.get("total_score"), b.get("rank"), b["status"],
+                  b.get("exclusion_reason"), b.get("doc"), b.get("page"), b.get("quote"), b.get("verified")]
+                 for b in data["bids"]])
+            cur.execute("insert into tender_bid_reports (tender_id, output) values (%s, %s) "
+                        "on conflict (tender_id) do update set output = excluded.output, created_at = now()",
+                        [tid, Jsonb({k: v for k, v in data.items() if k != "bids"})])
+            loaded += 1
+        conn.commit()
+        print(f"loaded bid results for {loaded} tenders")
+
         # Materialized views from backend.sql: recompute them from the new data
         for view in ("buyer_stats", "competitor_stats"):
             cur.execute("select 1 from pg_matviews where matviewname = %s", [view])
