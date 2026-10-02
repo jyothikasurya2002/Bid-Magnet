@@ -1,6 +1,6 @@
 BIDMAGNET – DATA PIPELINE PROGRESS LOG
 ======================================
-Owner: Jyothika (data part)    Last updated: 2026-10-02
+Owner: Jyothika (data part)    Last updated: 2026-10-02 (evening)
 
 ----------------------------------------------------------------------
 0. CURRENT STATUS (read this first)
@@ -9,8 +9,15 @@ DONE
   [x] Pipeline code: fetch -> parse -> IT filter -> CSV/JSON -> Supabase
   [x] September 2026 downloaded and processed (42,574 tenders, 3,754 IT)
   [x] Supabase loaded: 3,754 IT tenders (52 MB of the 500 MB free tier)
-  [x] 1 cited checklist: tender 20602902 (47/47 citations verified)
-  [x] Git repo created locally with 2 commits (nothing pushed yet)
+  [x] 3 cited checklists, 116/116 citations verified (see section 7):
+        20602902 cemetery SaaS (47), 20571626 AI chatbot (36),
+        20586307 OT cybersecurity, 3 lots (33)
+  [x] Git repo created locally with 4 commits (nothing pushed yet)
+
+IN PROGRESS
+  [~] Downloading June, July, August 2026 for more history
+      (August done; June/July running in the background, logs in
+      data-pipeline/logs/). Next: rebuild with all 4 months and reload.
 
 WAITING ON JYOTHIKA
   [ ] Run `gh auth login` in the VS Code terminal, then tell Claude "logged in"
@@ -20,8 +27,6 @@ WAITING ON JYOTHIKA
       Project URL and anon key (Project Settings -> API)
 
 NEXT OPTIONS
-  - Download 3-6 more months of history (richer buyer/competitor profiles)
-  - Extract 2-3 more open tenders for demo variety (free, done by Claude Code)
   - Fit score: rank tenders against a sample company profile
   - Buyer profile per tender (past winners, discount, bidder count)
 
@@ -219,8 +224,23 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
       SCC, Izertis, ASAC, ABAST.
 
 ----------------------------------------------------------------------
-7. CHECKLIST EXAMPLE – TENDER 20602902
+7. CHECKLISTS (out/extractions/<id>.json, also in Supabase)
 ----------------------------------------------------------------------
+  The three demo tenders were chosen to contrast with each other:
+
+  Tender     What                          Budget     Deadline        Main lesson
+  20602902   Cemetery SaaS, La Vall        3.7k EUR   20 Oct 23:59    easy entry, but contradictions
+             d'Uixó                                                   between the two documents
+  20571626   AI chatbot, Canary Islands    50.7k EUR  11 Oct 23:59    likely incumbent; price barely
+             Government                                               matters
+  20586307   OT cybersecurity, Aguas de    142k EUR   9 Oct 13:00     heavy requirements; vendor
+             Lorca (3 lots)                (3 lots)                 lock-in; checkboxes are images
+
+  How to pick more: open IT tenders (status PUB, deadline >= today,
+  CPV 72*/48*, PCAP+PPT available, budget 30k-600k). 152 match today.
+  Fetch PDFs: python placsp_fetch.py docs --ids <id1>,<id2>
+
+--- 7a. TENDER 20602902 ---
   Cemetery-management SaaS, La Vall d'Uixó council. Budget 3,704.18 EUR
   excl. VAT. Bid deadline 20 Oct 2026 23:59. PCAP 93 pages + PPT 24 pages.
   47 items, 47/47 citations verified.
@@ -234,6 +254,44 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
     vs BASIC (PPT p.8); minimum training 12 h (PCAP p.21) vs 4 h (PPT p.11);
     availability 99% (PPT) vs scoring from 99.5% (PCAP); extension
     23 vs 24 months.
+
+--- 7b. TENDER 20571626 – AI chatbot, Viceconsejería de Justicia (Canarias) ---
+  Budget 50,696.25 EUR excl. IGIC (Canary tax 7%). Deadline 11 Oct 2026
+  23:59; questions until ~7 Oct. Ends 31 Dec 2026. 36/36 citations verified.
+  - Minimum team of 13 people (PM, 3 full-stack, 2 cloud, 3 AI, 4 content).
+  - LIKELY INCUMBENT: the project manager needs 3 years building case-
+    management systems for Gender Violence Courts. It is both a minimum
+    requirement and the biggest quality criterion (15 pts). Very few people
+    in Spain qualify.
+  - Price 60 pts with a LOG formula: the max allowed 20% discount gains only
+    ~1.2 points (checked: 58.76 vs 60). Discounts above 20% score 0.
+    The contract is won on quality (cloud partner badge 10, ENS level 10,
+    PM experience 15, on-site presence 5).
+  - Must be in ROLECE or the Canary Islands register by the deadline.
+  - Boilerplate inconsistencies: "includes IGIC" and "taxes NOT included" in
+    one sentence; mentions lots but has none; Annex IV vs VI.
+
+--- 7c. TENDER 20586307 – OT cybersecurity, Aguas de Lorca (water utility) ---
+  142,000 EUR excl. VAT in 3 lots: L1 firewall 31k (4 yrs), L2 anomaly probe
+  19k (1 yr), L3 SOC operation 92k (4 yrs). Deadline 9 Oct 2026 13:00.
+  Urgent procedure. 33/33 citations verified.
+  - Max 2 lots per bidder; bidding on all 3 = exclusion with no fix allowed.
+  - Requirements: ISO 27001, ISO 9001, ENS, official vendor partner for 6+
+    months; technicians with water-sector OT security experience in the last
+    12 months (named in the bid, with client certificates); ISA 62443 or
+    SANS certification. No subcontracting. 5% definitive guarantee.
+  - Scoring: price 80 + Palo Alto partner 10 + university teaching 10
+    (lots 1, 3); price 80 + Claroty partner 20 (lot 2).
+  - Ecosystem lock-in: renewal of installed Palo Alto + Claroty, integration
+    with the Veolia group SOC.
+  - IMPORTANT LESSON: this PDF draws checkboxes and the scoring table as
+    images. Plain text extraction read every checkbox as "SI" (variants,
+    price revision, data processing...) and missed the points table
+    entirely. Checked on the page images. Production extraction must use
+    page images, which the Claude API does when given the PDF.
+  - The scoring weights are cited from the PLACSP XML (doc "placsp_xml"),
+    which matches the images. extract_tender.py --verify now checks
+    those quotes against the tender's XML record.
 
 ----------------------------------------------------------------------
 8. SETUP NOTES & FIXES
@@ -252,11 +310,14 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
 ----------------------------------------------------------------------
 9. GIT
 ----------------------------------------------------------------------
-  Local repo at the project root, branch main, 2 commits:
+  Local repo at the project root, branch main, 4 commits:
     9581c17 Add PLACSP data pipeline
     cdc9ddc Batch Supabase loader so a full month loads in seconds
-  Excluded: .env (passwords), raw/ downloads, business .docx/.pdf,
-  .claude/settings.local.json.
+    b8bdefc Add progress log for the data pipeline
+    019e74a Add chatbot and cybersecurity checklists; verify XML-sourced citations
+  Excluded: .env (passwords), raw/ downloads, logs/, business .docx/.pdf,
+  .claude/settings.local.json. data-pipeline/Summary(1).txt (Jyothika's
+  saved copy of the explanation) is NOT committed; left on disk.
   Not pushed yet: waiting for `gh auth login`.
 
 ----------------------------------------------------------------------
@@ -267,7 +328,7 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
   Only PLACSP                          missing Catalan/Basque/Navarre-     aggregated regional feed or
                                        only tenders                        regional APIs later
   PDFs not in Supabase Storage         app can only link to PLACSP         upload PDFs for open tenders
-  1 checklist                          thin demo                           2-3 more, free
+  3 checklists                         enough for a demo                   more on request, free
   Daily job not active                 data goes stale after today         GitHub push + secret
   IT filter is code-based only         some noise (e.g. a data-protection  smarter matching later
                                        officer tender tagged as IT)
@@ -280,3 +341,9 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
               encoded password) and loaded; loader batched (1h+ -> 16s);
               checklist for 20602902 (47/47 verified); local git repo
               with 2 commits; GitHub CLI installed; progress.txt started.
+  2026-10-02  Checklists for 20571626 (AI chatbot) and 20586307 (OT cyber,
+  (later)     3 lots); all 3 checklists loaded to Supabase, 116/116
+              citations verified. Found that some PDFs draw checkboxes and
+              tables as images (text extraction misreads them); added XML
+              citation support. placsp_fetch.py docs --ids. Started
+              downloading June-August 2026 (August done).
