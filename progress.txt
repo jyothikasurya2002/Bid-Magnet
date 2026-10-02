@@ -1,0 +1,282 @@
+BIDMAGNET – DATA PIPELINE PROGRESS LOG
+======================================
+Owner: Jyothika (data part)    Last updated: 2026-10-02
+
+----------------------------------------------------------------------
+0. CURRENT STATUS (read this first)
+----------------------------------------------------------------------
+DONE
+  [x] Pipeline code: fetch -> parse -> IT filter -> CSV/JSON -> Supabase
+  [x] September 2026 downloaded and processed (42,574 tenders, 3,754 IT)
+  [x] Supabase loaded: 3,754 IT tenders (52 MB of the 500 MB free tier)
+  [x] 1 cited checklist: tender 20602902 (47/47 citations verified)
+  [x] Git repo created locally with 2 commits (nothing pushed yet)
+
+WAITING ON JYOTHIKA
+  [ ] Run `gh auth login` in the VS Code terminal, then tell Claude "logged in"
+  [ ] Decide: include business docs (.docx/.pdf) in the repo? (currently excluded)
+  [ ] Decide: add DATABASE_URL as a GitHub secret so the daily job runs?
+  [ ] Send the frontend person: out/extractions/20602902.json, plus the Supabase
+      Project URL and anon key (Project Settings -> API)
+
+NEXT OPTIONS
+  - Download 3-6 more months of history (richer buyer/competitor profiles)
+  - Extract 2-3 more open tenders for demo variety (free, done by Claude Code)
+  - Fit score: rank tenders against a sample company profile
+  - Buyer profile per tender (past winners, discount, bidder count)
+
+----------------------------------------------------------------------
+1. THE IDEA
+----------------------------------------------------------------------
+BidMagnet (formerly Tender Copilot) helps Spanish IT companies (20-500 staff)
+win public contracts. These companies find tenders late, can't judge whether
+a tender is worth it, lose bids over a missing document, and guess at prices.
+The product finds relevant tenders, scores them, and prepares the bid
+groundwork: a checklist with page citations, a price simulation and a
+proposal draft.
+
+Jyothika's part: the data (Miguel: "data scraping and cleaning" by Saturday).
+
+Agreed stack: Supabase (database + file storage + email login), Python
+scripts for data, Next.js on Vercel for the website.
+Demo strategy: real data, a few tenders prepared in depth ahead of time,
+nothing that can fail live.
+
+----------------------------------------------------------------------
+2. SHORT ANSWERS
+----------------------------------------------------------------------
+How much data?   1 month (September 2026) + newest live updates.
+                 3,754 IT tenders in Supabase (52 MB), out of 42,574 total.
+Source?          One so far: PLACSP, the national procurement platform.
+                 Official public XML feed; we are NOT scraping web pages.
+Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
+                 once a day (on 2 Oct at 10:47 its last update was 1 Oct
+                 20:17). Our daily job is written but NOT switched on yet
+                 (needs the GitHub push + secret).
+
+----------------------------------------------------------------------
+3. THE WHOLE FLOW
+----------------------------------------------------------------------
+
+ PLACSP (government)          YOUR LAPTOP (data-pipeline/)                SUPABASE (cloud DB)
+ -------------------          ----------------------------                -------------------
+                        (1) placsp_fetch.py
+ Monthly zip (history) ---->  raw/placsp_202609.zip  (304 MB)
+ Live feed (newest)    ---->  raw/live/page_*.atom   (27 MB)
+                                    |
+                        (2) placsp_parse.py   XML -> clean records,
+                                    |         keep latest version, tag IT
+                        (3) build_dataset.py  filter IT, write files, stats
+                                    v
+                              out/tenders.jsonl (29 MB) --(4) load_supabase.py--> tenders (3,754)
+                              out/*.csv (Excel)                                   tender_criteria (11,835)
+                              out/stats.md                                        tender_documents (38,049)
+                                    |                                             tender_results (3,193)
+ Tender PDFs <---- (5) placsp_fetch.py docs                                       tender_requirements (14,737)
+      |                                                                                  |
+      +------------>  raw/docs/<id>/*.pdf (2.7 MB, 2 tenders)                            |
+                                    |                                                    |
+                        (6) extract_tender.py   PDF -> cited checklist + verify          |
+                                    v                                                    |
+                              out/extractions/<id>.json --(4) load_supabase.py--> tender_extractions (1)
+                                                                                         |
+                                                              (7) Next.js app reads <----+
+
+----------------------------------------------------------------------
+4. STEP BY STEP
+----------------------------------------------------------------------
+
+(1) FETCHING – placsp_fetch.py
+  PLACSP publishes tenders as Atom feeds: a standard "list of updates"
+  format, like a news feed, where each item is a block of XML (CODICE).
+
+  Mode         Command               What you get                                 Use
+  monthly zip  month 202609          every tender touched that month              history (buyers, winners, prices)
+                                     (193 files, 2.9 GB XML unzipped)
+  live feed    live --pages 3        newest ~500 updates per page, newest first;  daily updates
+                                     each page links to the next older one
+  documents    docs --open-only      PCAP + PPT PDFs for tenders still open       checklist extraction
+
+  Problems handled:
+  - Certificate: PLACSP's HTTPS certificate is issued by FNMT (Spanish
+    government CA), which Mac/Linux don't trust by default. We load
+    certs/fnmt_chain.pem explicitly instead of switching security off.
+  - Slow, flaky server (~100 KB/s, dropped connections, no resume):
+    3 retries; downloads go to a .part file first so a half file never
+    looks complete.
+
+(2) PARSING – placsp_parse.py
+  - Streams the XML one tender at a time, so 2.9 GB never needs to fit in
+    memory. A full month takes about 2 minutes.
+  - Per tender it extracts:
+      basics        id, title, status, link, last-updated time
+      buyer         name, tax ID (NIF), city, place in government hierarchy
+      money         budget excl./incl. VAT, estimated total value
+      what          CPV codes, contract type, procedure, duration, lots
+      when          bid deadline date and time
+      criteria      each award criterion + weight (e.g. "Price, 70")
+      requirements  solvency (turnover, experience), declarations, classification
+      documents     links to PCAP, PPT, annexes, award notices
+      results       winner + NIF, bids received, lowest/highest bid,
+                    award amount, date
+  - IT filter on CPV codes: 72* (IT services) and 48* (software) = core;
+    302* = hardware; 3242*/6421* = telecom/network.
+  - Duplicates: a tender reappears at every status change
+    (PUB open -> EV evaluating -> ADJ awarded -> RES resolved).
+    latest_versions() keeps only the newest version. It also handles
+    deletion markers ("tombstones") for withdrawn tenders.
+
+(3) BUILDING – build_dataset.py
+  Keeps only IT tenders and writes to out/:
+    tenders.jsonl   full nested record per tender (29 MB); this is what
+                    gets loaded into Supabase
+    *.csv           tenders, criteria, documents, results, requirements
+                    (open in Excel)
+    stats.md        coverage numbers
+  Also works out: region (from the EU NUTS location code), price weight,
+  and whether the PCAP/PPT PDFs exist.
+
+(4) STORING – load_supabase.py -> Supabase
+  Table                 One row =                 Used for
+  tenders               one tender                feed, search, filters, deadline board
+  tender_criteria       one award criterion       "Price 70%, training 10%"
+  tender_documents      one PDF link              download links
+  tender_results        one award (per lot)       buyer profile: winners, discounts, bid counts
+  tender_requirements   one requirement           eligibility check
+  tender_extractions    one cited checklist       checklist screen
+
+  Rules:
+  - Newer wins: a tender is only overwritten if the incoming version is
+    newer, so re-runs and out-of-order loads are safe.
+  - Batches of 200, saved as it goes: a full month loads in 16 seconds,
+    and an interruption doesn't lose everything.
+  - Security: logged-in users can read; only the pipeline (with the DB
+    password) can write.
+  - Space: 52 MB of 500 MB free, so room for about 8-9 more months.
+
+(5) PDFs
+  - Supabase stores only the links (38,049 of them).
+  - Downloaded so far: 4 PDFs for 2 open tenders, on the laptop in
+    raw/docs/. NOT in Supabase Storage yet.
+
+(6) CITED CHECKLIST – extract_tender.py
+  - Input: a tender's PDFs. Output: out/extractions/<id>.json with:
+      summary, key dates, envelopes, mandatory documents, eligibility,
+      award criteria, price formula, abnormally-low-bid rule,
+      exclusion risks, contradictions.
+  - Every item carries doc + page + quote.
+  - Verification: the script opens the PDF and checks that the quote
+    really appears on that page (verified: true/false).
+  - Two ways to run it:
+      With Claude API: automatic; needs a paid key (~$0.50-1 per tender).
+      Free:            Claude Code writes the JSON in chat, then run
+                       `uv run --with pymupdf extract_tender.py <id> --verify`.
+
+(7) USING IT (not built yet)
+  The Next.js app reads Supabase with the Project URL + anon key:
+  feed of open IT tenders, tender page, buyer profile (tender_results),
+  checklist (tender_extractions).
+
+----------------------------------------------------------------------
+5. HOW "REAL-TIME" WILL WORK (daily job)
+----------------------------------------------------------------------
+  Every day 05:30 UTC, GitHub Actions (.github/workflows/daily-ingest.yml):
+    1. placsp_fetch.py live --pages 3     (~1,500 newest updates)
+    2. build_dataset.py raw/live          (parse + IT filter)
+    3. load_supabase.py                   (newer-wins upsert)
+  -> new tenders appear the next morning; status changes (e.g. a tender
+     gets awarded) update the same row.
+  To switch it on: push to GitHub + add the DATABASE_URL secret.
+  Running more often adds little: PLACSP refreshes about once a day.
+
+----------------------------------------------------------------------
+6. RESULTS – SEPTEMBER 2026 (numbers for Saturday)
+----------------------------------------------------------------------
+  42,574 tenders in the month; 3,754 IT (3,058 software & IT services,
+  564 hardware, 132 telecom). 406 IT tenders open for bids.
+
+  Region:     Madrid 1,117 | Andalucía 543 | Valencia 506 | Canarias 225 |
+              Baleares 193
+  Procedure:  Open 1,783 | Simplified open 1,090 (short deadlines, SME
+              territory) | Restricted 363 | Negotiated 356
+
+  Data available for free from the XML:
+    PDF links (PCAP/PPT)                   87%
+    Award criteria + weights               87%
+    Bids received (awarded tenders)        99%
+    Winner tax ID (NIF)                    91%
+    Lowest/highest bid                     65%
+    Award resolution PDFs                  71%
+
+  Market insights:
+    - Median 2 bidders per IT award; median discount 5%. Competition is
+      thin, so an SME that finds the tender and bids correctly has a
+      real chance.
+    - Top buyer: the State's centralised purchasing directorate
+      (191 tenders), then Valencia city council, mutual insurers,
+      Balearic health service.
+    - Top winners: Orange, Vodafone, Atlantis, Inetum, Redes System,
+      SCC, Izertis, ASAC, ABAST.
+
+----------------------------------------------------------------------
+7. CHECKLIST EXAMPLE – TENDER 20602902
+----------------------------------------------------------------------
+  Cemetery-management SaaS, La Vall d'Uixó council. Budget 3,704.18 EUR
+  excl. VAT. Bid deadline 20 Oct 2026 23:59. PCAP 93 pages + PPT 24 pages.
+  47 items, 47/47 citations verified.
+  - One envelope (sobre único) with 9 documents; 9 more only for the winner.
+  - No solvency proof needed; ROLECE registration required; ENS security
+    certification required (ISO 27001 does NOT replace it).
+  - Criteria: price 70, availability 5, P1 response 5, P1 workaround 5,
+    P1 resolution 5, extra training 10.
+  - Price formula: Pi = 70 x (Bi / Bmax). Abnormally low: art. 85 RGLCAP.
+  - 4 contradictions between the documents, e.g. ENS MEDIUM (PCAP p.74)
+    vs BASIC (PPT p.8); minimum training 12 h (PCAP p.21) vs 4 h (PPT p.11);
+    availability 99% (PPT) vs scoring from 99.5% (PCAP); extension
+    23 vs 24 months.
+
+----------------------------------------------------------------------
+8. SETUP NOTES & FIXES
+----------------------------------------------------------------------
+  - Supabase project in Ireland (eu-west-1): EU, OK for GDPR.
+  - .env holds DATABASE_URL (never committed). The password contains '@',
+    so it is stored URL-encoded as %40. Use the Session pooler URL: the
+    "Direct connection" host is IPv6-only and fails on this network and
+    on GitHub Actions.
+  - First full Supabase load was stopped after the 1-hour limit with
+    nothing saved (one round trip per row to Ireland). Rewritten to batch
+    200 rows and commit as it goes: now 16 seconds.
+  - No paid Claude API key: extraction is done for free by Claude Code
+    in chat and checked with --verify.
+
+----------------------------------------------------------------------
+9. GIT
+----------------------------------------------------------------------
+  Local repo at the project root, branch main, 2 commits:
+    9581c17 Add PLACSP data pipeline
+    cdc9ddc Batch Supabase loader so a full month loads in seconds
+  Excluded: .env (passwords), raw/ downloads, business .docx/.pdf,
+  .claude/settings.local.json.
+  Not pushed yet: waiting for `gh auth login`.
+
+----------------------------------------------------------------------
+10. KNOWN GAPS
+----------------------------------------------------------------------
+  Gap                                  Impact                              Fix
+  Only 1 month of history              thin buyer/competitor profiles      download more months (20-40 min each)
+  Only PLACSP                          missing Catalan/Basque/Navarre-     aggregated regional feed or
+                                       only tenders                        regional APIs later
+  PDFs not in Supabase Storage         app can only link to PLACSP         upload PDFs for open tenders
+  1 checklist                          thin demo                           2-3 more, free
+  Daily job not active                 data goes stale after today         GitHub push + secret
+  IT filter is code-based only         some noise (e.g. a data-protection  smarter matching later
+                                       officer tender tagged as IT)
+
+----------------------------------------------------------------------
+11. CHANGE LOG
+----------------------------------------------------------------------
+  2026-10-02  Pipeline built and tested; PLACSP certificate fix;
+              September 2026 processed; Supabase connected (pooler,
+              encoded password) and loaded; loader batched (1h+ -> 16s);
+              checklist for 20602902 (47/47 verified); local git repo
+              with 2 commits; GitHub CLI installed; progress.txt started.
