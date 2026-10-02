@@ -2,6 +2,7 @@
 raw/
 out/*
 !out/extractions/
+!out/bids/
 __pycache__/
 *.part
 logs/
