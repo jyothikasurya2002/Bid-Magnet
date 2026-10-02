@@ -17,10 +17,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "psycopg[binary]"
+      - run: pip install "psycopg[binary]" fastembed
       # ~500 entries per page; 3 pages covers more than a day of updates
       - run: python placsp_fetch.py live --pages 3
-      - run: python build_dataset.py raw/live --segments core,hardware,telecom_network
+      - run: python placsp_fetch.py live --pages 1 --feed regional   # Catalonia, Basque Country, ...
+      - run: python build_dataset.py raw/live raw/live_agg --segments core,hardware,telecom_network
       - run: python load_supabase.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # meaning-based matching: embed only new/changed tenders and company profiles (free local model)
+      - run: python embed.py
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

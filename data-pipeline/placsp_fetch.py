@@ -1,6 +1,7 @@
 """Download PLACSP feeds and tender documents. Standard library only.
 
     python placsp_fetch.py month 202609            # monthly zip -> raw/placsp_202609.zip
+    python placsp_fetch.py month 202609 --feed regional   # Catalonia, Basque Country... -> raw/placsp_agg_202609.zip
     python placsp_fetch.py live --pages 3          # newest pages of the live feed -> raw/live/
     python placsp_fetch.py docs --open-only        # PCAP/PPT PDFs for IT tenders in out/ -> raw/docs/
     python placsp_fetch.py docs --ids 20571626     # just these tenders
@@ -28,8 +29,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 RAW = ROOT / "raw"
-BASE = "https://contrataciondelsectorpublico.gob.es/sindicacion/sindicacion_643"
-FEED = "licitacionesPerfilesContratanteCompleto3"
+HOST = "https://contrataciondelsectorpublico.gob.es/sindicacion"
+# national = tenders published on PLACSP itself; regional = other platforms (Catalonia, Basque
+# Country, Madrid, Andalucía, Galicia, Navarra, ...) that PLACSP republishes in the same format
+FEEDS = {
+    "national": ("sindicacion_643/licitacionesPerfilesContratanteCompleto3", "placsp_{}.zip", "live"),
+    "regional": ("sindicacion_1044/PlataformasAgregadasSinMenores", "placsp_agg_{}.zip", "live_agg"),
+}
 
 _ctx = ssl.create_default_context()
 _ctx.load_verify_locations(ROOT / "certs" / "fnmt_chain.pem")
@@ -51,18 +57,20 @@ def download(url: str, dest: Path, timeout: int = 3600, retries: int = 3) -> Pat
     raise RuntimeError(f"giving up on {url}")
 
 
-def fetch_month(month: str) -> Path:
-    dest = RAW / f"placsp_{month}.zip"
-    print(f"downloading {month} (can take 10-30 min) ...")
-    return download(f"{BASE}/{FEED}_{month}.zip", dest)
+def fetch_month(month: str, feed: str = "national") -> Path:
+    path, filename, _ = FEEDS[feed]
+    dest = RAW / filename.format(month)
+    print(f"downloading {feed} {month} (can take 10-30 min) ...")
+    return download(f"{HOST}/{path}_{month}.zip", dest)
 
 
-def fetch_live(pages: int) -> list[Path]:
+def fetch_live(pages: int, feed: str = "national") -> list[Path]:
     """Follow rel=next links from the newest page. Each page is ~500 entries, ~12 MB."""
-    url = f"{BASE}/{FEED}.atom"
+    path, _, live_dir = FEEDS[feed]
+    url = f"{HOST}/{path}.atom"
     out = []
     for i in range(pages):
-        dest = RAW / "live" / f"page_{i:03d}.atom"
+        dest = RAW / live_dir / f"page_{i:03d}.atom"
         print(f"page {i}: {url}")
         download(url, dest, timeout=600)
         out.append(dest)
@@ -103,7 +111,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     m = sub.add_parser("month"); m.add_argument("months", nargs="+", help="YYYYMM, or YYYY for a full year")
+    m.add_argument("--feed", choices=FEEDS, default="national")
     lv = sub.add_parser("live"); lv.add_argument("--pages", type=int, default=1)
+    lv.add_argument("--feed", choices=FEEDS, default="national")
     dc = sub.add_parser("docs")
     dc.add_argument("--open-only", action="store_true", help="only tenders still accepting bids")
     dc.add_argument("--limit", type=int, default=200)
@@ -113,9 +123,9 @@ def main() -> None:
 
     if args.cmd == "month":
         for mo in args.months:
-            fetch_month(mo)
+            fetch_month(mo, args.feed)
     elif args.cmd == "live":
-        fetch_live(args.pages)
+        fetch_live(args.pages, args.feed)
     else:
         fetch_docs(args.open_only, args.limit, set(args.kinds.split(",")),
                    set(args.ids.split(",")) if args.ids else None)

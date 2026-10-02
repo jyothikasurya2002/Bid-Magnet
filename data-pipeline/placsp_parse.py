@@ -251,6 +251,8 @@ def parse_entry(entry: ET.Element) -> dict | None:
     return {
         "id": entry_url.rsplit("/", 1)[-1],
         "entry_url": entry_url,
+        # national platform, or a regional platform (Catalonia, Basque Country, ...) republished by PLACSP
+        "source": "regional" if "PlataformasAgregadas" in entry_url else "placsp",
         "folder_id": _text(cfs, "cbc:ContractFolderID"),
         "title": _text(entry, "atom:title"),
         "link": link.get("href") if link is not None else None,

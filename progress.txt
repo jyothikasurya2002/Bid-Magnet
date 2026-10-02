@@ -47,21 +47,28 @@ The company still submits on the official government platform itself.
   Daily tender collection                Built (switches on once the GitHub
                                          secret is added)
   Database (Supabase, EU servers)        Built and filled
-  9 months of tenders (Jan–Sep 2026)     Loaded
+  9 months of tenders (Jan–Sep 2026)     Loaded: national platform + regional
+                                         platforms (Catalonia, Basque Country,
+                                         Navarre, Madrid, Andalucía, Galicia...)
   Fit score for a company                Built
   Buyer history (who wins, discounts)    Built
   Competitor profiles (who wins what)    Built
   Renewal radar (contracts ending soon)  Built
   Search box (Spanish-aware)             Built
+  Matching by meaning (AI, free model)   Built: finds tenders worded
+                                         differently from the profile
+  Similar past tenders (who won, price)  Built
   Document checklists with page refs     3 demo tenders done
-  Full bid results (ALL bidders' prices  2 tenders done (39 bids); method
-  and scores, incl. losers)              ready to scale
+  Full bid results (ALL bidders' prices  9 tenders done (115 bids), all
+  and scores, incl. losers)              page-verified
   Website / app screens                  Not started (frontend team)
 
 
 4. KEY NUMBERS (January–September 2026)
 ---------------------------------------
-  - 178,645 public tenders published; 16,134 are IT; 424 open right now.
+  - 247,038 public tenders published (national + regional platforms);
+    23,059 are IT (3,524 in Catalonia, 1,441 in the Basque Country);
+    673 open right now.
   - 3,882 different companies won IT contracts; the biggest are
     Telefónica, Inetum, Indra, Orange and Vodafone.
   - 4,588 IT contracts are expected to end in the next 12 months
@@ -75,6 +82,17 @@ The company still submits on the official government platform itself.
     scored too low technically, 2 priced too low). The winner bid 35%
     below budget. In Castellón, 20 bids; the top 3 were within 0.64
     points; Telefónica came 9th, Deloitte was excluded.
+  - More bid-result lessons (Valencia/Murcia/Alicante):
+      * Windows licences: won with SECOND-HAND licences at less than half
+        the price of 13 resellers of new ones.
+      * 329k EUR smart-platform contract: a local SME won bidding 45% below
+        budget; Telefónica (2% below) came 8th.
+      * Often everyone maxes the non-price criteria, so price decides.
+      * One company (Península Corporate Innovation) appears in 4 of these
+        tenders: excluded twice, runner-up twice.
+  - "Similar tenders" for the cemetery software: other councils' cemetery
+    contracts were mostly won by the same vendor, with 1 bidder and no
+    discount: incumbents keep their software contracts.
 
 
 5. THE THREE DEMO TENDERS
@@ -96,27 +114,31 @@ The company still submits on the official government platform itself.
         (repo Settings -> Secrets and variables -> Actions -> New secret;
          value = the DATABASE_URL line in data-pipeline/.env; then Actions
          -> "Daily PLACSP ingest" -> Run workflow to test)
-    [ ] Send the frontend team: data-pipeline/API.md, the 3 checklist files
-        (data-pipeline/out/extractions/), Supabase Project URL + anon key
+    [ ] Send the frontend team: data-pipeline/API.md + Supabase Project URL
+        and anon key (never the database password or .env)
   Data/backend (Claude):
-    [ ] Read more award reports (1,100+ IT tenders have them) to grow
-        the bid-results data
+    [x] Matching by meaning (AI embeddings)
+    [x] Regional platforms (via PLACSP's regional feed)
+    [~] Bid results: 9 tenders done; 1,100+ more have award reports
     [ ] Put the PDFs of open tenders into Supabase Storage
-    [ ] Smarter matching by meaning (AI embeddings)
-    [ ] Regional platforms (Catalonia, Basque Country, Navarre) and EU TED
+    [ ] EU TED (large EU-wide tenders)
   Team:
     [ ] Mockups/screens using the real demo data (see API.md)
 
 
 7. STORAGE NOTE (Supabase free tier = 500 MB)
 ---------------------------------------------
-  Before: 154 MB for 4 months (8,688 IT tenders).
-  Now:    128 MB for 9 months (16,134 IT tenders), about 26% of the limit.
-  How: removed a duplicate copy of every tender, stopped rewriting tenders
-  that didn't change, and cleaned up space left by earlier reloads.
-  Each tender now takes ~8 KB instead of ~18 KB. Room for roughly 2 more
-  years of IT tenders before the free tier is full. The PDFs themselves
-  are NOT stored yet (only their links); that would use Supabase Storage
+  Now: 171 MB (about a third of the limit) for 23,059 IT tenders
+  (9 months, national + regional), including:
+    tender documents (links)   59 MB
+    tenders                    44 MB
+    AI fingerprints            23 MB  (for matching by meaning)
+    requirements/criteria/results/bids/stats   the rest
+  Earlier: 154 MB for only 8,688 tenders, before we removed a duplicate
+  copy of every tender and stopped rewriting unchanged ones (each tender
+  now ~7 KB instead of ~18 KB).
+  Room for roughly another year of data on the free tier. The PDFs
+  themselves are NOT stored (only links); that would use Supabase Storage
   (1 GB free), which is separate.
 
 
@@ -146,7 +168,11 @@ The company still submits on the official government platform itself.
     extract_tender.py  defines the checklist format and checks every page
                        reference against the PDF ("verified").
     bid_results.py     checks the page references of full bid results and
-                       links bidders to their tax ID (NIF) via past awards.
+                       links bidders to their tax ID (NIF) from the
+                       platform's opening reports or past awards.
+    embed.py           computes AI fingerprints for new/changed tenders and
+                       company profiles (free model, runs on a laptop or in
+                       the daily GitHub job; no API key).
 
   8c. Database tables (Supabase)
     tenders               one row per tender (title, buyer, budget, deadline,
@@ -160,6 +186,8 @@ The company still submits on the official government platform itself.
     tender_bids           EVERY bidder on a tender: price, scores, rank,
                           why excluded (from award reports; page-cited)
     tender_bid_reports    summary + insights per tender's bid results
+    tender_embeddings     AI "fingerprint" of each tender title (384 numbers,
+                          multilingual model) for matching by meaning
     companies             customer profiles (each user sees only their own)
     tender_decisions      Go / No-go / Watch per company and tender
 
@@ -171,6 +199,8 @@ The company still submits on the official government platform itself.
     upcoming_renewals       contracts ending in the next 12 months + incumbent
     bidder_history          how each company bids across tenders, including
                             the ones it lost (avg rank, discount, exclusions)
+    similar_tenders(id)     past tenders most similar in meaning: winner,
+                            discount, number of bidders
     Security: row-level security; logged-out visitors see nothing; users
     only see their own company profiles and decisions.
 
@@ -192,8 +222,10 @@ The company still submits on the official government platform itself.
       form; 2 tenders / 39 bids so far, all page-verified.
 
   8g. Known limits
-    - Only the national platform so far (no Catalonia/Basque/Navarre-only
-      tenders yet).
+    - Regional tenders carry less detail than national ones (fewer
+      document links and criteria in the feed).
+    - Some award reports are scanned or have broken fonts; those bid
+      results can't be read without page images.
     - Certificate requirements are only detected where the XML or a
       checklist mentions them; most details are inside the PDFs.
     - Checklists for new tenders need the paid Claude API (or are written
@@ -203,6 +235,10 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-02  Regional platforms added (+6,925 IT tenders); matching by
+              meaning (free multilingual AI model, pgvector); similar past
+              tenders; bid results for 7 more tenders (9 total, 115 bids,
+              124/124 references verified); daily job extended.
   2026-10-02  Full bid results from award reports: 2 tenders, 39 bids,
               all verified; bidder_history; technical section added here.
   2026-10-02  Added January–May 2026 (now 9 months); competitor profiles;

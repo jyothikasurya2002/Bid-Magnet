@@ -44,10 +44,15 @@ DATA SOURCE: PLACSP (national platform), Atom/CODICE XML
 - IT filter (CPV prefixes): core 72*, 48*; hardware 302*; telecom 3242*, 6421*.
 - Status codes: PUB open, EV evaluation, ADJ awarded, RES resolved,
   PRE prior notice, ANUL cancelled.
-- Downloaded: raw/placsp_202601..202609.zip + raw/live/. Not in git.
+- Downloaded: raw/placsp_202601..202609.zip (national) + raw/placsp_agg_2026xx.zip
+  (regional feed sindicacion_1044/PlataformasAgregadasSinMenores: Catalonia,
+  Basque Country, Navarra, Madrid, Andalucía, Galicia...; same CODICE format,
+  10-20 MB/month, fewer docs/criteria) + raw/live, raw/live_agg. Not in git.
+  Parser sets source = 'regional' when entry id URL contains PlataformasAgregadas.
 
 PIPELINE (data-pipeline/)
-- placsp_fetch.py   month YYYYMM | live --pages N | docs [--open-only] [--ids a,b]
+- placsp_fetch.py   month YYYYMM [--feed national|regional] | live --pages N [--feed ..]
+                    | docs [--open-only] [--ids a,b] [--kinds pcap,ppt,general,notice]
 - placsp_parse.py   streaming parser -> dict per tender (+ criteria, documents,
                     results, requirements, lots); latest_versions(); it_segment()
 - build_dataset.py  <zips/atoms...> --segments all -> out/tenders.jsonl, *.csv,
@@ -65,10 +70,24 @@ PIPELINE (data-pipeline/)
                     resolutions / actas: price, tech/formula/total score, rank,
                     status, exclusion_reason, citation) and fills bidder_nif by
                     normalised-name match against winners in tenders.jsonl
-                    (masked NIFs with '*' ignored). Loader -> tender_bids +
+                    (masked NIFs with '*' ignored); prefers NIFs from PLACSP opening
+                    reports in the tender's docs ("Razón social:/NIF:" and
+                    "- Name - CIF: X"; company NIFs only, no personal DNI).
+                    Items with page=null get their page located automatically.
+                    Loader -> tender_bids +
                     tender_bid_reports. View bidder_history aggregates them.
-                    Done: 18477548 (Aragón AI assistant, 19 bids),
-                    19526065 (Castellón data governance, 20 bids).
+                    Done (9 tenders, 115 bids, 124/124 verified): 18477548,
+                    19526065, 19171872, 18485883, 18294567, 4235305, 18888047,
+                    19786715, 18467596. Skipped 19179728 (broken font in acta).
+                    Workflow: fetch docs --kinds general,notice; pymupdf text with
+                    page markers; read the resolution / last acta / informe de
+                    valoración; write JSON (helper pattern: name, offer, scores,
+                    rank, status, doc, quote); run bid_results.py.
+- embed.py          fastembed paraphrase-multilingual-MiniLM-L12-v2 (384-d) ->
+                    tender_embeddings (halfvec, text_md5 to skip unchanged) and
+                    companies.embedding (description + keywords). Full run ~10 min
+                    for 16k tenders on the laptop; daily runs only embed new ones.
+                    `uv run --python 3.12 --with fastembed --with "psycopg[binary]" embed.py`
 - schema.sql        tenders, tender_criteria, tender_documents, tender_results,
                     tender_requirements, tender_extractions (+ RLS: authenticated
                     read). tenders has NO full JSON copy any more (old `raw`
@@ -80,7 +99,13 @@ PIPELINE (data-pipeline/)
                     buyer_stats + competitor_stats (materialized views),
                     upcoming_renewals (view), match_tenders(company uuid, limit)
                     fit score (keywords via Spanish full-text search),
-                    search_tenders(q, only_open, limit). Re-runnable.
+                    search_tenders(q, only_open, limit), similar_tenders(id),
+                    bidder_history view. pgvector 0.8.2 in schema `extensions`
+                    (grant usage to authenticated; functions set search_path =
+                    public, extensions). match_tenders adds similarity points
+                    (>=0.55 +15, >=0.45 +8, <0.30 -5) and also returns tenders
+                    matched by meaning only (sim >= 0.5). Re-runnable.
+                    Local test DB needs image pgvector/pgvector:pg16.
 - API.md            how the Next.js app calls everything (supabase-js).
 - .github/workflows/daily-ingest.yml (repo root): live 3 pages -> build -> load;
                     needs the DATABASE_URL secret (not set yet).
@@ -88,12 +113,12 @@ PIPELINE (data-pipeline/)
     python3 build_dataset.py raw/placsp_2026{01,02,03,04,05,06,07,08,09}.zip raw/live --segments all   (~12 min)
     uv run -q --python 3.13 --with "psycopg[binary]" load_supabase.py [--force]   (~1-2 min)
 
-CURRENT DATA (in Supabase, 128 MB of 500 MB)
-- Jan-Sep 2026: 178,645 tenders, 16,134 IT, 424 open. 3 checklists
+CURRENT DATA (in Supabase, 171 MB of 500 MB; embeddings 23 MB)
+- Jan-Sep 2026, national + regional: 247,038 tenders, 23,059 IT, 673 open. 3 checklists
   (20602902 cemetery SaaS, 20571626 AI chatbot, 20586307 OT cyber, 3 lots),
   116/116 citations verified. buyer_stats 2,088 buyers (846 with a discount);
-  competitor_stats 3,882 winners; upcoming_renewals 4,588.
-  Demo company id 00000000-0000-0000-0000-000000000001 (282 matches).
+  competitor_stats 5,218 winners. Demo company id
+  00000000-0000-0000-0000-000000000001 (442 matches). Open: 424 national + 249 regional.
 - Key stats: median 2 bidders/award; median discount 10% open / 14%
   simplified (competitive only; overall ~5-6% incl. negotiated = 0%).
 - 1,100+ IT tenders (RES/ADJ, >=3 bids) have actas / informes de valoración

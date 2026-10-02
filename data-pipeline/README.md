@@ -16,6 +16,9 @@ Requires Python 3.9 or newer. The fetch and build scripts use the standard libra
 python placsp_fetch.py month 202609
 python placsp_fetch.py live --pages 2
 
+#    regional platforms (Catalonia, Basque Country...) republished by PLACSP:
+python placsp_fetch.py month 202609 --feed regional
+
 # 2. Parse, keep IT, dedupe → out/
 python build_dataset.py raw/placsp_202609.zip            # core IT only (CPV 72*, 48*)
 python build_dataset.py raw/live --segments all          # + hardware & telecom
@@ -38,6 +41,8 @@ uv run --with "psycopg[binary]" load_supabase.py
 - **`match_tenders(company)`:** fit score from 0 to 100, with reasons.
 
 - **`tender_bids`, `tender_bid_reports`, `bidder_history`:** every bidder's price and score, read from award resolutions and committee minutes (`out/bids/<id>.json`, checked with `bid_results.py`).
+
+- **`tender_embeddings` + `similar_tenders()`:** matching by meaning, using a free multilingual model run by `embed.py` (fastembed; no API key).
 
 How the frontend calls them: **[API.md](API.md)**.
 

@@ -44,6 +44,8 @@ const { data } = await supabase.from('companies').insert({
 const { data: companies } = await supabase.from('companies').select('*')
 ```
 - `owner` is filled automatically from the signed-in user.
+- `description` matters: it's what the meaning-based matching compares against.
+- The profile's embedding is computed by the daily job (`embed.py`), so a brand-new profile gets meaning-based matching from the next day. Sector, keyword and region matching work immediately.
 - **Region names** must match these values: `Madrid`, `Comunitat Valenciana`, `Andalucía`, `Cataluña`, `País Vasco`, `Galicia`, `Canarias`, `Illes Balears`, `Castilla y León`, `Castilla-La Mancha`, `Aragón`, `Murcia`, `Asturias`, `Extremadura`, `Navarra`, `Cantabria`, `La Rioja`, `Ceuta`, `Melilla`, `Nacional`.
 
 ## Screen 2: "Tenders for you" (`match_tenders`)
@@ -68,11 +70,12 @@ Rows are sorted best-first.
 
 Each item in `reasons` looks like `{type: 'ok'|'warn'|'gap', points: number, text: string}`. Show `ok` in green, `warn` in amber and `gap` in red.
 
-How the score is built (rule-based, every point has a reason):
+How the score is built (rule-based, every point has a reason). It also uses **meaning**: the company's description and keywords are compared with each tender title by a multilingual AI model, so tenders worded differently from the profile are still found.
 
 | Factor | Points |
 |---|---|
-| Sector code match / keyword-only match | 30 / 10 |
+| Sector code match / keyword-or-meaning-only match | 30 / 10 |
+| Meaning similarity ≥0.55 / ≥0.45 / <0.30 | +15 / +8 / −5 |
 | Keywords in title | up to +10 |
 | Region: yours / national / anywhere | +15 / +10 / +10 |
 | Turnover ≥ 1.5 × annual value (usual solvency rule) | +15, else −15 |
@@ -116,7 +119,7 @@ const { data: buyer } = await supabase.from('buyer_stats').select('*').eq('buyer
 | `last_award_date` | Most recent award |
 | `top_winners` | `[{name, nif, wins}]`, up to 5 |
 
-**Data window: January–September 2026.**
+**Data window: January–September 2026.** National platform plus regional platforms (Catalonia, Basque Country, Madrid, Andalucía, Galicia, Navarra…). `tenders.source` is `placsp` or `regional`. Regional tenders have fewer document links.
 
 **Decisions** (Go / No-go / Watch), one per company and tender:
 ```ts
@@ -157,6 +160,16 @@ There's no backend call. Use `checklist.price.formula` plus the buyer's `median_
 
 As a market reference, the median discount in competitive procedures is about 10% (open) and 14% (simplified), June–Sept 2026.
 
+## Similar past tenders (`similar_tenders`)
+"Tenders like this one: who won, at what discount, against how many bidders." Great for pricing and for spotting incumbents.
+
+```ts
+const { data } = await supabase.rpc('similar_tenders', { p_tender: tenderId, p_limit: 10, only_awarded: true })
+// -> tender_id, title, buyer_name, region, budget_no_tax, status, winner_name, winner_nif,
+//    award_amount_no_tax, discount, received_tenders, award_date, similarity (0-1)
+```
+Example: for the cemetery-software tender, it returns other councils' cemetery-software contracts, mostly won by the same vendor with 1 bidder and 0% discount.
+
 ## Search box (`search_tenders`)
 Spanish-aware full-text search over title and buyer, so "aplicaciones" also matches "aplicación".
 
@@ -193,7 +206,7 @@ const { data: top } = await supabase.from('competitor_stats').select('*').order(
 Link from `buyer_stats.top_winners[].nif` or `upcoming_renewals.incumbent_nif`.
 
 ## Full bid results: all bidders, not just the winner (`tender_bids`, `tender_bid_reports`, `bidder_history`)
-These are read from award resolutions and committee minutes. **Only a few tenders so far** (`18477548`, `19526065`); the coverage grows over time.
+These are read from award resolutions and committee minutes. **9 tenders, 115 bids so far** (see `select tender_id from tender_bid_reports`); the coverage grows over time.
 
 ```ts
 // every bid on a tender, best first

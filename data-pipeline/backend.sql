@@ -3,6 +3,26 @@
 -- The frontend calls these directly with supabase-js; see API.md.
 
 -- --------------------------------------------------------------------------
+-- 0. Semantic embeddings (embed.py fills them; 384-dim multilingual model, half precision)
+-- --------------------------------------------------------------------------
+create schema if not exists extensions;
+create extension if not exists vector with schema extensions;
+grant usage on schema extensions to authenticated;   -- so functions can use the vector operators
+
+create table if not exists tender_embeddings (
+  tender_id  text primary key references tenders(id) on delete cascade,
+  embedding  extensions.halfvec(384) not null,
+  text_md5   text not null,          -- md5 of the embedded text; re-embed only when it changes
+  model      text not null
+);
+alter table tender_embeddings enable row level security;
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'tender_embeddings' and policyname = 'read for signed-in users') then
+    create policy "read for signed-in users" on tender_embeddings for select to authenticated using (true);
+  end if;
+end $$;
+
+-- --------------------------------------------------------------------------
 -- 1. Company profile (Screen 1). One user can own several companies.
 -- --------------------------------------------------------------------------
 create table if not exists companies (
@@ -23,6 +43,9 @@ create table if not exists companies (
   max_budget       numeric,
   created_at       timestamptz default now()
 );
+
+alter table companies add column if not exists embedding extensions.halfvec(384);  -- from description + keywords
+alter table companies add column if not exists embedding_md5 text;
 
 alter table companies enable row level security;
 do $$
@@ -144,7 +167,8 @@ returns table (
   deadline_date date, days_left int, procedure_label text, it_segment text,
   score int, reasons jsonb, has_checklist boolean, link text
 )
-language plpgsql stable security invoker as $$
+language plpgsql stable security invoker
+set search_path = public, extensions as $$
 #variable_conflict use_column
 declare
   c companies%rowtype;
@@ -170,7 +194,9 @@ begin
                  coalesce((select string_agg(coalesce(el->>'requirement_en', '') || ' ' || coalesce(el->>'threshold', ''), ' ')
                            from tender_extractions e, jsonb_array_elements(e.output->'eligibility') el
                            where e.tender_id = t.id), '')) as req_text,
-           exists (select 1 from tender_requirements q where q.tender_id = t.id and q.kind = 'classification') as needs_class
+           exists (select 1 from tender_requirements q where q.tender_id = t.id and q.kind = 'classification') as needs_class,
+           -- meaning-based similarity between the tender title and the company profile (null if not embedded)
+           (select 1 - (e.embedding <=> c.embedding) from tender_embeddings e where e.tender_id = t.id) as sim
     from tenders t
     where t.status = 'PUB' and t.deadline_date >= current_date
       and (c.min_budget is null or t.budget_no_tax >= c.min_budget)
@@ -182,14 +208,21 @@ begin
            (o.req_text ~ '9001')                                              as needs_iso9001,
            (o.req_text ~ '(esquema nacional de seguridad|\mens\M)')           as needs_ens
     from open_t o left join buyer_stats b on b.buyer_nif = o.buyer_nif
-    where o.sector_ok or o.kw_hits > 0
+    where o.sector_ok or o.kw_hits > 0 or o.sim >= 0.5
   ),
   scored as (
     select k.*,
       -- each line: (points, reason). Reasons with 0 points are still shown.
       array_remove(array[
         case when k.sector_ok then jsonb_build_object('type','ok','points',30,'text','Matches your sector codes')
-             else jsonb_build_object('type','warn','points',10,'text','Only matched by keyword, not sector code') end,
+             else jsonb_build_object('type','warn','points',10,'text','Not in your sector codes (matched by keyword or meaning)') end,
+        case when k.sim is null then null
+             when k.sim >= 0.55 then jsonb_build_object('type','ok','points',15,
+                  'text','Very close to what you do (similarity ' || round(k.sim::numeric, 2) || ')')
+             when k.sim >= 0.45 then jsonb_build_object('type','ok','points',8,
+                  'text','Similar to what you do (similarity ' || round(k.sim::numeric, 2) || ')')
+             when k.sim < 0.30 then jsonb_build_object('type','warn','points',-5,
+                  'text','Not much like your usual work (similarity ' || round(k.sim::numeric, 2) || ')') end,
         case when k.kw_hits > 0 then jsonb_build_object('type','ok','points',least(k.kw_hits * 5, 10),
                                      'text','Title mentions your keywords') end,
         case when cardinality(c.regions) = 0 then jsonb_build_object('type','ok','points',10,'text','You work anywhere in Spain')
@@ -241,6 +274,37 @@ begin
 end $$;
 
 grant execute on function match_tenders(uuid, int) to authenticated;
+
+-- --------------------------------------------------------------------------
+-- 4b. Similar past tenders ("tenders like this one: who won, at what discount").
+--     select * from similar_tenders('20602902');
+-- --------------------------------------------------------------------------
+create or replace function similar_tenders(p_tender text, p_limit int default 10, only_awarded boolean default true)
+returns table (tender_id text, title text, buyer_name text, region text, budget_no_tax numeric,
+               status text, winner_name text, winner_nif text, award_amount_no_tax numeric,
+               discount numeric, received_tenders int, award_date date, similarity real)
+language sql stable security invoker
+set search_path = public, extensions as $$
+  with q as (select embedding from tender_embeddings where tender_id = p_tender),
+  near as (
+    select e.tender_id, (1 - (e.embedding <=> q.embedding))::real as similarity
+    from tender_embeddings e, q
+    where e.tender_id <> p_tender
+    order by e.embedding <=> q.embedding
+    limit p_limit * 5
+  )
+  select t.id, t.title, t.buyer_name, t.region, t.budget_no_tax, t.status,
+         r.winner_name, r.winner_nif, r.award_amount_no_tax,
+         case when r.lot_id is null and t.budget_no_tax > 0 and r.award_amount_no_tax > 0
+              then round(1 - r.award_amount_no_tax / t.budget_no_tax, 3) end,
+         r.received_tenders, r.award_date, n.similarity
+  from near n join tenders t on t.id = n.tender_id
+  left join lateral (select * from tender_results r where r.tender_id = t.id order by r.lot_id nulls first limit 1) r on true
+  where not only_awarded or r.winner_name is not null
+  order by n.similarity desc
+  limit p_limit
+$$;
+grant execute on function similar_tenders(text, int, boolean) to authenticated;
 
 -- --------------------------------------------------------------------------
 -- 5. Search box: Spanish full-text search over title + buyer, best matches first.

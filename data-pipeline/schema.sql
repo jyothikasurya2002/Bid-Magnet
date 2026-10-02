@@ -35,6 +35,7 @@ create table if not exists tenders (
   period_start      date,
   period_end        date,
   extra             jsonb,                     -- small leftovers not worth a column (summary, urgency, ...)
+  source            text default 'placsp',     -- placsp (national) | regional (Catalonia, Basque Country, ...)
   ingested_at       timestamptz default now(),
   -- Spanish full-text search over title + buyer ("aplicaciones" matches "aplicación")
   search            tsvector generated always as
@@ -45,6 +46,7 @@ create table if not exists tenders (
 alter table tenders add column if not exists period_start date;
 alter table tenders add column if not exists period_end date;
 alter table tenders add column if not exists extra jsonb;
+alter table tenders add column if not exists source text default 'placsp';   -- placsp | regional
 alter table tenders add column if not exists search tsvector generated always as
   (to_tsvector('spanish', coalesce(title, '') || ' ' || coalesce(buyer_name, ''))) stored;
 drop view if exists upcoming_renewals;          -- depended on raw; recreated by backend.sql

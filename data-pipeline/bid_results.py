@@ -47,6 +47,33 @@ def nif_index() -> dict[str, str]:
     return idx
 
 
+def opening_report_nifs(pdfs: dict[str, fitz.Document]) -> dict[str, str]:
+    """PLACSP opening reports list every bidder as 'Razón social: X' + 'NIF: Y'. Company NIFs only:
+    personal ID numbers (DNI/NIE: start with a digit or X/Y/Z) of sole traders are personal data, skipped."""
+    found: dict[str, str] = {}
+    for doc in pdfs.values():
+        text = "\n".join(page.get_text() for page in doc)
+        pairs = re.findall(r"Raz[oó]n social:\s*(.+?)\s*\n\s*NIF:\s*([A-Z0-9]{8,10})", text)
+        pairs += re.findall(r"-\s+(.+?)\s+-\s+(?:CIF|NIF):\s*([A-Z0-9]{8,10})", text)   # "- Name - CIF: X" format
+        for name, nif in pairs:
+            if re.match(r"^[A-HJ-NP-SUVW]\d{7}[0-9A-J]$", nif):
+                found.setdefault(name_key(name), nif)
+    return found
+
+
+def locate(item: dict, pdfs: dict[str, fitz.Document]) -> None:
+    """If an item has no page yet, find the first page of its doc containing the quote."""
+    from extract_tender import _norm
+    doc = pdfs.get(item.get("doc", ""))
+    if item.get("page") or doc is None or not item.get("quote"):
+        return
+    probe = " ".join(_norm(item["quote"]).split()[:8])
+    for i, page in enumerate(doc, 1):
+        if probe in _norm(page.get_text()):
+            item["page"] = i
+            return
+
+
 def main() -> None:
     idx = nif_index()
     for path in sorted(BIDS.glob("*.json")):
@@ -55,9 +82,12 @@ def main() -> None:
         pdfs = {p.stem: fitz.open(p) for p in sorted((DOCS / tid).glob("*.pdf"))}
         items = [data["summary"], *data["bids"]]
         for it in items:
+            locate(it, pdfs)
             verify(it, pdfs)
+        local = opening_report_nifs(pdfs)
         for bid in data["bids"]:
-            bid["bidder_nif"] = idx.get(name_key(bid["bidder_name"]))
+            key = name_key(bid["bidder_name"])
+            bid["bidder_nif"] = local.get(key) or idx.get(key)
         ok = sum(i["verified"] for i in items)
         linked = sum(1 for b in data["bids"] if b["bidder_nif"])
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")

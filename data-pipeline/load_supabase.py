@@ -29,7 +29,7 @@ TENDER_COLS = [
     "buyer_dir3", "buyer_city", "buyer_hierarchy", "region", "contract_type", "contract_type_label",
     "procedure_code", "procedure_label", "budget_no_tax", "budget_with_tax", "estimated_value", "cpv_codes",
     "it_segment", "nuts_code", "duration", "duration_unit", "deadline_date", "deadline_time",
-    "over_eu_threshold", "has_lots", "lots", "period_start", "period_end", "extra",
+    "over_eu_threshold", "has_lots", "lots", "period_start", "period_end", "extra", "source",
 ]
 # Parsed fields that have no column of their own; kept small on purpose (no full JSON copy)
 EXTRA_KEYS = ["entry_url", "buyer_type_code", "buyer_profile_url", "contract_subtype", "location",
