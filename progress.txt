@@ -45,7 +45,7 @@ The product finds relevant tenders, scores them, and prepares the bid
 groundwork: a checklist with page citations, a price simulation and a
 proposal draft.
 
-Jyothika's part: the data (Miguel: "data scraping and cleaning" by Saturday).
+
 
 Agreed stack: Supabase (database + file storage + email login), Python
 scripts for data, Next.js on Vercel for the website.
