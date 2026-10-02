@@ -84,8 +84,11 @@ The company still submits on the official government platform itself.
 6. NEXT STEPS
 -------------
   Jyothika:
-    [ ] Push the latest commits to GitHub
+    [x] Push to GitHub (done up to 2026-10-02; push again after new commits)
     [ ] Add the DATABASE_URL secret in GitHub so the daily update runs
+        (repo Settings -> Secrets and variables -> Actions -> New secret;
+         value = the DATABASE_URL line in data-pipeline/.env; then Actions
+         -> "Daily PLACSP ingest" -> Run workflow to test)
     [ ] Send the frontend team: data-pipeline/API.md, the 3 checklist files
         (data-pipeline/out/extractions/), Supabase Project URL + anon key
   Data/backend (Claude):
@@ -108,7 +111,78 @@ The company still submits on the official government platform itself.
   (1 GB free), which is separate.
 
 
-8. LOG
+8. FOR THE TEAM: HOW THE BACKEND WORKS (technical)
+--------------------------------------------------
+  Everything is in the repo under data-pipeline/. Full how-to: its README.md;
+  frontend guide: API.md; AI/dev notes: implementation.txt.
+
+  8a. Architecture
+    PLACSP (government XML feed)
+        |  Python scripts (laptop now; GitHub Actions daily at 05:30 UTC)
+        v
+    Supabase Postgres (EU, Ireland)  <-- Next.js app reads it with supabase-js
+                                        (no separate server; signed-in users only)
+
+  8b. Python scripts (data-pipeline/)
+    placsp_fetch.py    downloads monthly zips / live feed pages / tender PDFs.
+                       Handles the government's own TLS certificate (FNMT)
+                       and its slow, flaky server (retries).
+    placsp_parse.py    turns each XML entry into a clean record; keeps only
+                       the newest version of each tender; tags IT tenders by
+                       sector code (CPV 72*, 48* = software/IT services;
+                       302* hardware; 3242*/6421* telecom).
+    build_dataset.py   filters IT, writes out/tenders.jsonl + CSVs + stats.md.
+    load_supabase.py   uploads to Supabase in batches; only rewrites tenders
+                       that changed; refreshes the statistics views.
+    extract_tender.py  defines the checklist format and checks every page
+                       reference against the PDF ("verified").
+
+  8c. Database tables (Supabase)
+    tenders               one row per tender (title, buyer, budget, deadline,
+                          region, sector codes, status, search index)
+    tender_criteria       how bids are scored (e.g. price 70, quality 30)
+    tender_requirements   solvency / certificates / classification asked for
+    tender_documents      links to every official PDF (terms, specs, award
+                          minutes, evaluation reports...)
+    tender_results        who won, how many bids, lowest/highest bid, amount
+    tender_extractions    the cited checklists (JSON)
+    companies             customer profiles (each user sees only their own)
+    tender_decisions      Go / No-go / Watch per company and tender
+
+  8d. Backend features (SQL in backend.sql)
+    match_tenders(company)  fit score 0-100 + reasons for every open tender
+    search_tenders(text)    Spanish-aware search box
+    buyer_stats             per buyer: typical bidders, discount, top winners
+    competitor_stats        per winning company: wins, value, regions, buyers
+    upcoming_renewals       contracts ending in the next 12 months + incumbent
+    Security: row-level security; logged-out visitors see nothing; users
+    only see their own company profiles and decisions.
+
+  8e. How to run it (needs data-pipeline/.env with DATABASE_URL)
+    python3 placsp_fetch.py month 202609            # download a month
+    python3 build_dataset.py raw/*.zip --segments all
+    uv run --with "psycopg[binary]" load_supabase.py   # --force after code changes
+    New database? Run schema.sql then backend.sql in the Supabase SQL editor.
+
+  8f. What Jyothika built (data & backend), Oct 2026
+    - The full collection pipeline above, tested on 9 months of real data
+      (178,645 tenders -> 16,134 IT).
+    - The Supabase database, security rules and all backend features.
+    - 3 demo checklists with 116 verified page references.
+    - Storage optimisation (154 MB -> 128 MB while doubling the data).
+    - API.md so the frontend can build every screen.
+
+  8g. Known limits
+    - Only the national platform so far (no Catalonia/Basque/Navarre-only
+      tenders yet).
+    - Certificate requirements are only detected where the XML or a
+      checklist mentions them; most details are inside the PDFs.
+    - Checklists for new tenders need the paid Claude API (or are written
+      by hand with Claude Code, as for the 3 demo tenders).
+    - A few buyers' discount figures look odd (unit-price contracts).
+
+
+9. LOG
 ------
   2026-10-02  Added January–May 2026 (now 9 months); competitor profiles;
               Spanish search; readable document names; database 154 -> 128 MB.
