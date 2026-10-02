@@ -14,10 +14,8 @@ DONE
         20586307 OT cybersecurity, 3 lots (33)
   [x] Git repo created locally with 4 commits (nothing pushed yet)
 
-IN PROGRESS
-  [~] Downloading June, July, August 2026 for more history
-      (August done; June/July running in the background, logs in
-      data-pipeline/logs/). Next: rebuild with all 4 months and reload.
+  [x] History extended to June–September 2026: 99,218 tenders, 8,688 IT
+      (420 open), all loaded into Supabase (see section 6).
 
 WAITING ON JYOTHIKA
   [ ] Run `gh auth login` in the VS Code terminal, then tell Claude "logged in"
@@ -50,8 +48,8 @@ nothing that can fail live.
 ----------------------------------------------------------------------
 2. SHORT ANSWERS
 ----------------------------------------------------------------------
-How much data?   1 month (September 2026) + newest live updates.
-                 3,754 IT tenders in Supabase (52 MB), out of 42,574 total.
+How much data?   4 months (June–September 2026) + newest live updates.
+                 8,688 IT tenders in Supabase, out of 99,218 total.
 Source?          One so far: PLACSP, the national procurement platform.
                  Official public XML feed; we are NOT scraping web pages.
 Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
@@ -195,8 +193,18 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
   Running more often adds little: PLACSP refreshes about once a day.
 
 ----------------------------------------------------------------------
-6. RESULTS – SEPTEMBER 2026 (numbers for Saturday)
+6. RESULTS (numbers for Saturday)
 ----------------------------------------------------------------------
+  JUNE–SEPTEMBER 2026 (4 months, now in Supabase)
+  99,218 tenders; 8,688 IT (6,980 software & IT services, 1,440 hardware,
+  268 telecom). 420 IT tenders open for bids.
+  Region: Madrid 2,760 | Valencia 1,197 | Andalucía 1,164 | Canarias 584
+  Coverage: PDF links 82% | criteria+weights 90% | bid count 99% |
+  winner NIF 90% | lowest/highest bid 62% | award PDFs 69%
+  Median 2 bidders per IT award; median discount 6% (4,511 awards).
+  The September-only numbers below tell the same story.
+
+  SEPTEMBER 2026 ONLY
   42,574 tenders in the month; 3,754 IT (3,058 software & IT services,
   564 hardware, 132 telecom). 406 IT tenders open for bids.
 
@@ -410,3 +418,4 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
               tables as images (text extraction misreads them); added XML
               citation support. placsp_fetch.py docs --ids. Started
               downloading June-August 2026 (August done).
+  2026-10-02  Rebuilt with June–September 2026: 8,688 IT tenders loaded.
