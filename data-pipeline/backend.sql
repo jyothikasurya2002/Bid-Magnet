@@ -333,6 +333,11 @@ begin
                            where e.tender_id = t.id), '')) as req_text,
            (select array_agg(q.code) from tender_requirements q
              where q.tender_id = t.id and q.kind = 'classification' and q.code is not null)       as class_codes,
+           -- small simplified tender without solvency requirements in the data: usually no proof of
+           -- turnover/experience needed (art. 159.6 LCSP), a way for young companies to build experience
+           -- (by law the abbreviated simplified procedure, under 60k €, waives solvency proof)
+           (t.procedure_label = 'Abierto simplificado'
+            and coalesce(t.estimated_value, t.budget_no_tax) < 60000)                      as solvency_light,
            -- meaning-based similarity between the tender title and the company profile (null if not embedded)
            (select 1 - (e.embedding <=> c.embedding) from tender_embeddings e where e.tender_id = t.id) as sim
     from tenders t
@@ -371,7 +376,7 @@ begin
              when c.annual_turnover >= 1.5 * k.annual_value then jsonb_build_object('type','ok','points',15,
                   'text','Turnover covers the usual solvency rule (1.5× annual value ≈ ' || round(1.5 * k.annual_value) || ' €)')
              else jsonb_build_object('type','gap','points',-15,
-                  'text','Turnover may be below the usual solvency rule (1.5× annual value ≈ ' || round(1.5 * k.annual_value) || ' €)') end,
+                  'text','Turnover may be below the usual solvency rule (1.5× annual value ≈ ' || round(1.5 * k.annual_value) || ' €): consider bidding with a partner') end,
         case when k.needs_iso27001 and not ('ISO27001' = any(certs))
                then jsonb_build_object('type','gap','points',-10,'text','Asks for ISO 27001 (you don''t have it)')
              when k.needs_iso27001 then jsonb_build_object('type','ok','points',5,'text','Asks for ISO 27001 (you have it)') end,
@@ -408,7 +413,9 @@ begin
              when k.median_bidders >= 5 then jsonb_build_object('type','warn','points',0,
                   'text','Crowded at this buyer (median ' || k.median_bidders || ' bidders)')
              else jsonb_build_object('type','ok','points',5,'text','Median ' || k.median_bidders || ' bidders at this buyer') end,
-        case when k.procedure_label = 'Abierto simplificado' then jsonb_build_object('type','ok','points',5,
+        case when k.solvency_light then jsonb_build_object('type','ok','points',5,
+                  'text','Small simplified tender: usually no proof of turnover or experience needed (good for building a track record)')
+             when k.procedure_label = 'Abierto simplificado' then jsonb_build_object('type','ok','points',5,
                   'text','Simplified procedure: lighter paperwork') end
       ], null) as reason_list
     from candidates k
@@ -498,7 +505,8 @@ select
   count(distinct tender_id)                             as tenders_won,
   sum(award_amount_no_tax)                              as total_awarded_no_tax,
   count(distinct buyer_nif)                             as buyers,
-  bool_or(sme_awarded)                                  as is_sme,
+  -- flagged SME in most of its awards (a single SME flag is often noise for large firms)
+  count(*) filter (where sme_awarded) > count(*) filter (where sme_awarded is false) as is_sme,
   max(award_date)                                       as last_win,
   case when count(discount) filter (where discount between -0.05 and 0.9) >= 3
        then percentile_cont(0.5) within group (order by discount) filter (where discount between -0.05 and 0.9)
@@ -513,6 +521,73 @@ group by nif;
 create unique index if not exists competitor_stats_nif on competitor_stats (nif);
 revoke all on competitor_stats from anon;
 grant select on competitor_stats to authenticated;
+
+-- --------------------------------------------------------------------------
+-- 6b. Partner finder (needs competitor_stats above): who could bid WITH you? Companies that won tenders most similar
+--     in meaning to this one, preferring the same region and wins large enough to
+--     prove the experience usually asked for (a past contract >= 70% of the yearly value).
+--     select * from partner_candidates('20586307', '<company uuid>');
+-- --------------------------------------------------------------------------
+create or replace function partner_candidates(p_tender text, p_company uuid default null, p_limit int default 10)
+returns table (nif text, name text, similar_wins int, best_similarity real, regions text[], same_region boolean,
+               largest_similar_award numeric, covers_experience boolean, total_awards bigint, is_sme boolean,
+               last_win date, examples jsonb, reasons text[])
+language sql stable security invoker
+set search_path = public, extensions as $$
+  with target as (
+    select t.id, t.region,
+           coalesce(t.estimated_value, t.budget_no_tax)
+             / greatest(case t.duration_unit when 'ANN' then t.duration when 'MON' then t.duration / 12.0
+                                             when 'DAY' then t.duration / 365.0 end, 1) as annual_value,
+           e.embedding
+    from tenders t join tender_embeddings e on e.tender_id = t.id
+    where t.id = p_tender
+  ),
+  me as (select c.nif from companies c where c.id = p_company),
+  near as (
+    select e.tender_id, (1 - (e.embedding <=> tg.embedding))::real as sim
+    from tender_embeddings e, target tg
+    where e.tender_id <> tg.id
+    order by e.embedding <=> tg.embedding
+    limit 400
+  ),
+  wins as (
+    select r.winner_nif as nif, r.winner_name, n.sim, t.region, t.title, t.buyer_name,
+           r.award_amount_no_tax, r.award_date
+    from near n join tenders t on t.id = n.tender_id join tender_results r on r.tender_id = t.id
+    where n.sim >= 0.6 and r.winner_nif is not null and r.winner_nif !~ '\*'
+      and r.winner_nif is distinct from (select nif from me)
+  ),
+  agg as (
+    select w.nif, mode() within group (order by w.winner_name) as name, count(*)::int as similar_wins,
+           max(w.sim) as best_similarity, sum(w.sim) as weight,
+           array_agg(distinct w.region) filter (where w.region is not null) as regions,
+           bool_or(w.region = (select region from target)) as same_region,
+           max(w.award_amount_no_tax) as largest_similar_award, max(w.award_date) as last_win,
+           (select jsonb_agg(jsonb_build_object('title', x.title, 'buyer', x.buyer_name,
+                                                 'amount', x.award_amount_no_tax, 'date', x.award_date) order by x.sim desc)
+              from (select * from wins w2 where w2.nif = w.nif order by w2.sim desc limit 3) x) as examples
+    from wins w group by w.nif
+  )
+  select a.nif, a.name, a.similar_wins, a.best_similarity, a.regions, coalesce(a.same_region, false),
+         a.largest_similar_award,
+         a.largest_similar_award >= 0.7 * (select annual_value from target),
+         cs.awards, cs.is_sme, a.last_win, a.examples,
+         array_remove(array[
+           a.similar_wins || ' similar contract' || case when a.similar_wins > 1 then 's' else '' end || ' won',
+           case when a.same_region then 'Works in the same region' end,
+           case when a.largest_similar_award >= 0.7 * (select annual_value from target)
+                then 'Past win large enough to prove the experience usually required' end,
+           case when cs.is_sme then 'SME' end
+         ], null)
+  from agg a left join competitor_stats cs on cs.nif = a.nif
+  order by coalesce(a.same_region, false) desc,
+           (a.largest_similar_award >= 0.7 * (select annual_value from target)) desc nulls last,
+           -- closeness of their best match first, then a small bonus for repeat wins
+           a.best_similarity + 0.05 * ln(1 + a.similar_wins) desc
+  limit p_limit
+$$;
+grant execute on function partner_candidates(text, uuid, int) to authenticated;
 
 -- --------------------------------------------------------------------------
 -- 7. Bidder history from full bid results (tender_bids): how each company bids,

@@ -63,6 +63,10 @@ The company still submits on the official government platform itself.
   Matching by meaning (AI, free model)   Built: finds tenders worded
                                          differently from the profile
   Similar past tenders (who won, price)  Built
+  Partner finder (who could bid with     Built (mentor's suggestion)
+  you to cover a gap)
+  "Solvency-friendly" flag (small        Built: young companies can find
+  tenders without solvency proof)        tenders to build a track record
   Document checklists with page refs     3 demo tenders done
   Full bid results (ALL bidders' prices  9 tenders done (115 bids), all
   and scores, incl. losers)              page-verified
@@ -207,6 +211,8 @@ The company still submits on the official government platform itself.
                             the ones it lost (avg rank, discount, exclusions)
     similar_tenders(id)     past tenders most similar in meaning: winner,
                             discount, number of bidders
+    partner_candidates(id)  companies that won similar work (same region,
+                            big enough wins) to bid with
     Security: row-level security; logged-out visitors see nothing; users
     only see their own company profiles and decisions.
 
@@ -241,6 +247,9 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-02  After mentor feedback: partner finder, solvency-friendly flag,
+              MENTOR_WALKTHROUGH.md (real tender split into must-meet /
+              formula / judgement criteria, gaps, documents, competition).
   2026-10-02  Frontend team's request added: company fields (NIF, website,
               ROLECE/classification status + codes, updated_at), private
               document bucket + company_documents table (owner-only),

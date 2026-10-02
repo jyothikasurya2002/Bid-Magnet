@@ -146,7 +146,7 @@ How the score is built (rule-based, every point has a reason). It also uses **me
 | Business classification required and missing | −10 |
 | Days left: ≥10 / 5–9 / 3–4 / <3 | +10 / +5 / 0 / −20 |
 | Buyer's median bidders ≤2 / 3–4 / ≥5 | +10 / +5 / 0 |
-| Simplified procedure | +5 |
+| Small simplified tender (< 60k €: solvency proof usually waived) / other simplified | +5 / +5 (different reason text) |
 
 The score is capped at 0–100. Certification requirements come from the XML and from the checklist when one exists. Otherwise the docs still need checking.
 
@@ -232,6 +232,18 @@ const { data } = await supabase.rpc('similar_tenders', { p_tender: tenderId, p_l
 //    award_amount_no_tax, discount, received_tenders, award_date, similarity (0-1)
 ```
 Example: for the cemetery-software tender, it returns other councils' cemetery-software contracts, mostly won by the same vendor with 1 bidder and 0% discount.
+
+## Partner finder (`partner_candidates`)
+"Who could bid WITH you?" It lists companies that won tenders most similar in meaning to this one. Same region comes first, then those whose past wins are big enough to prove the experience usually required (≥ 70% of the yearly value). It excludes the company's own NIF.
+
+```ts
+const { data } = await supabase.rpc('partner_candidates', { p_tender: tenderId, p_company: companyId, p_limit: 10 })
+// -> nif, name, similar_wins, best_similarity, regions[], same_region, largest_similar_award,
+//    covers_experience, total_awards, is_sme, last_win, examples[{title,buyer,amount,date}], reasons[]
+```
+Show it next to eligibility gaps: "You lack X → these companies have done it."
+
+Matching uses titles only, so treat results as suggestions. Some candidates are also likely competitors.
 
 ## Search box (`search_tenders`)
 Spanish-aware full-text search over title and buyer, so "aplicaciones" also matches "aplicación".

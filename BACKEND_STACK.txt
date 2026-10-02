@@ -81,6 +81,7 @@ technical notes).
      Who you're up against    view   buyer_stats        (by buyer_nif)
                               view   competitor_stats   (by nif)
                               rpc    similar_tenders    (past winners, discounts)
+     Find a partner           rpc    partner_candidates (who won similar work nearby)
                               tables tender_bids, tender_bid_reports,
                                      view bidder_history (full bid results)
      Go / No-go / Watch       table  tender_decisions   (upsert)
