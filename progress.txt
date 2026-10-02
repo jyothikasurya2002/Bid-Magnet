@@ -44,8 +44,8 @@ The company still submits on the official government platform itself.
 3. WHAT IS BUILT SO FAR
 -----------------------
   Part                                   Status
-  Daily tender collection                Built (switches on once the GitHub
-                                         secret is added)
+  Daily tender collection                LIVE: GitHub runs it every morning
+                                         at 07:30 Spain time (05:30 UTC)
   Database (Supabase, EU servers)        Built and filled
   9 months of tenders (Jan–Sep 2026)     Loaded: national platform + regional
                                          platforms (Catalonia, Basque Country,
@@ -110,10 +110,8 @@ The company still submits on the official government platform itself.
 -------------
   Jyothika:
     [x] Push to GitHub (done up to 2026-10-02; push again after new commits)
-    [ ] Add the DATABASE_URL secret in GitHub so the daily update runs
-        (repo Settings -> Secrets and variables -> Actions -> New secret;
-         value = the DATABASE_URL line in data-pipeline/.env; then Actions
-         -> "Daily PLACSP ingest" -> Run workflow to test)
+    [x] DATABASE_URL secret added in GitHub; daily job tested OK
+        (first run added 21 new IT tenders, all embedded)
     [ ] Send the frontend team: data-pipeline/API.md + Supabase Project URL
         and anon key (never the database password or .env)
   Data/backend (Claude):
@@ -235,6 +233,8 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-02  Daily GitHub job is live; first successful run 20:19 CEST
+              (+21 IT tenders, 686 open, all embedded).
   2026-10-02  Daily GitHub job failed: the DATABASE_URL secret had a trailing
               line break. Scripts now ignore surrounding spaces/newlines.
   2026-10-02  Regional platforms added (+6,925 IT tenders); matching by

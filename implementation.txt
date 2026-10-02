@@ -108,7 +108,8 @@ PIPELINE (data-pipeline/)
                     Local test DB needs image pgvector/pgvector:pg16.
 - API.md            how the Next.js app calls everything (supabase-js).
 - .github/workflows/daily-ingest.yml (repo root): live 3 pages -> build -> load;
-                    needs the DATABASE_URL secret (not set yet).
+                    secret DATABASE_URL is SET and the job works (first run
+                    2026-10-02 18:19 UTC). Also runs regional live + embed.py.
 - Rebuild everything:
     python3 build_dataset.py raw/placsp_2026{01,02,03,04,05,06,07,08,09}.zip raw/live --segments all   (~12 min)
     uv run -q --python 3.13 --with "psycopg[binary]" load_supabase.py [--force]   (~1-2 min)
