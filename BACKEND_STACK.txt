@@ -1,9 +1,8 @@
 BIDMAGNET – BACKEND STACK (read this before building or exploring)
 =================================================================
-Owner: Jyothika (data & backend)          Last updated: 2026-10-02
-Questions or change requests -> Jyothika. Please don't change the backend
-yourselves (see section 5): it runs live every day and other screens
-depend on it.
+Last updated: 2026-10-02
+Please don't change the backend directly (see section 5): it runs live
+every day and every screen depends on it.
 
 Related files: data-pipeline/API.md (copy-paste code for every screen),
 progress.txt (what's done, in plain words), implementation.txt (deep
@@ -51,7 +50,7 @@ technical notes).
 
 3. HOW TO CONNECT (frontend)
 ----------------------------
-   In the Next.js app, .env.local (ask Jyothika for the two values):
+   In the Next.js app, .env.local (the two values are shared privately):
      NEXT_PUBLIC_SUPABASE_URL=...        (Supabase -> Project Settings -> API)
      NEXT_PUBLIC_SUPABASE_ANON_KEY=...   (same page; safe to use in the browser)
 
@@ -101,7 +100,7 @@ technical notes).
    two tables through the app: companies, tender_decisions (and
    nothing else). The security rules already enforce most of this.
 
-   Do NOT, without asking Jyothika:
+   Do NOT, without agreeing it in the team chat first:
    - edit, delete or add rows in the tender tables (tenders, tender_*,
      buyer/competitor stats) – the daily job owns them and would
      overwrite or conflict with your changes;
@@ -115,8 +114,8 @@ technical notes).
      DATABASE_URL (the daily update would stop);
    - commit .env files or keys.
 
-   Need a new field, filter or function? Ask Jyothika – it's usually a
-   small addition to backend.sql and gets added for everyone.
+   Need a new field, filter or function? Raise it in the team chat – it's
+   usually a small addition to backend.sql and gets added for everyone.
 
 
 6. HOW TO EXPLORE SAFELY (you're welcome to look around!)
@@ -152,7 +151,7 @@ technical notes).
      stats -> AI fingerprints for new tenders/company profiles.
    - Takes a few minutes. New company profiles get "matching by meaning"
      from the next morning; everything else works immediately.
-   - If a run fails, GitHub emails the repo owner; tell Jyothika.
+   - If a run fails, GitHub emails the repo owner.
 
 
 8. KNOWN LIMITS (so nobody is surprised in the demo)
