@@ -1,0 +1,103 @@
+BIDMAGNET – IMPLEMENTATION NOTES FOR AI ASSISTANTS
+Read this first. Human-friendly history is in progress.txt. Updated 2026-10-02.
+
+PROJECT
+- BidMagnet: bid/no-bid + bid-prep SaaS for Spanish IT SMEs (20-500 staff)
+  bidding on public tenders. IE Tech Venture Bootcamp team project (TVB28).
+- Jyothika owns data + backend. Others: Miguel (mockups), Lola/Gabriel
+  (competitors), Nabila/Simmran (pricing). Frontend: Next.js on Vercel (not built).
+- Root: "/Users/jyothikasurya/Documents/Tender Venture " (TRAILING SPACE in path).
+  Code: data-pipeline/. Git branch main, local commits only.
+
+RULES FROM THE USER
+- Never push or set up GitHub; just commit. Jyothika pushes manually.
+- No paid Claude API. Checklists are written by Claude Code in-session, then
+  checked with `extract_tender.py <id> --verify`.
+- After every piece of work, update progress.txt (status + change log) and,
+  if facts change, this file.
+- Never print secrets. .env holds DATABASE_URL (+ placeholder ANTHROPIC_API_KEY).
+- Don't commit data-pipeline/Summary*.txt (user's notes; gitignored).
+
+STACK / INFRA
+- Supabase project ref upzahnuxiwahglrlsdej, region eu-west-1. Use the Session
+  POOLER URL (aws-0-eu-west-1.pooler.supabase.com:5432, user
+  postgres.<ref>). The direct db.*.supabase.co host is IPv6-only and fails.
+  The password contains '@', stored URL-encoded as %40.
+- Python: system python3 is 3.9 (fetch/parse/build need the stdlib only).
+  Use `uv run -q --python 3.13 --with "psycopg[binary]"` or `--with pymupdf`
+  for the loader, extraction and DB scripts. Docker is available for a local
+  Postgres test (postgres:16, port 55432).
+- PLACSP TLS: FNMT CA not trusted by default -> certs/fnmt_chain.pem is
+  loaded on top of the system store. Server ~100 KB/s, flaky, NO range/resume.
+
+DATA SOURCE: PLACSP (national platform), Atom/CODICE XML
+- Monthly zip: https://contrataciondelsectorpublico.gob.es/sindicacion/
+  sindicacion_643/licitacionesPerfilesContratanteCompleto3_YYYYMM.zip
+  (~160-300 MB, ~2 h each). Live: ...Completo3.atom (~500 entries/page,
+  rel="next" links use the old domain contrataciondelestado.es -> rewritten).
+- One <entry> = one VERSION of a tender; keep the newest `updated` per id.
+  Tombstones = at:deleted-entry.
+- XML has: buyer + NIF, budget, CPVs, deadline, NUTS, criteria + weights,
+  solvency requirements, PDF links (PCAP = LegalDocumentReference,
+  PPT = TechnicalDocumentReference), results (winner NIF, bid count,
+  lowest/highest bid, award amount, per lot).
+- IT filter (CPV prefixes): core 72*, 48*; hardware 302*; telecom 3242*, 6421*.
+- Status codes: PUB open, EV evaluation, ADJ awarded, RES resolved,
+  PRE prior notice, ANUL cancelled.
+- Downloaded: raw/placsp_202606..202609.zip + raw/live/. Not in git.
+
+PIPELINE (data-pipeline/)
+- placsp_fetch.py   month YYYYMM | live --pages N | docs [--open-only] [--ids a,b]
+- placsp_parse.py   streaming parser -> dict per tender (+ criteria, documents,
+                    results, requirements, lots); latest_versions(); it_segment()
+- build_dataset.py  <zips/atoms...> --segments all -> out/tenders.jsonl, *.csv,
+                    stats.md. region_of() maps NUTS2 -> autonomous community.
+- load_supabase.py  reads out/tenders.jsonl + out/extractions/*.json; batched
+                    upsert (200/commit), newer-wins on `updated`; replaces child
+                    rows; refreshes buyer_stats. 8.7k tenders take ~16 s.
+- extract_tender.py SCHEMA (frontend contract) + verify(). Citations are
+                    {doc, page, quote, verified}. doc = PDF stem ("pcap__...",
+                    "ppt__...") or "placsp_xml" (checked against tenders.jsonl).
+                    API mode: claude-opus-5-5, structured output, fallbacks
+                    (unused: no key).
+- schema.sql        tenders, tender_criteria, tender_documents, tender_results,
+                    tender_requirements, tender_extractions (+ RLS: authenticated
+                    read).
+- backend.sql       companies (owner RLS + demo company), tender_decisions,
+                    buyer_stats (materialized view), upcoming_renewals (view),
+                    match_tenders(company uuid, limit) fit score. Re-runnable.
+- API.md            how the Next.js app calls everything (supabase-js).
+- .github/workflows/daily-ingest.yml (repo root): live 3 pages -> build -> load;
+                    needs the DATABASE_URL secret (not set yet).
+- Rebuild everything:
+    python3 build_dataset.py raw/placsp_2026{06,07,08,09}.zip raw/live --segments all
+    uv run -q --python 3.13 --with "psycopg[binary]" load_supabase.py
+
+CURRENT DATA (in Supabase)
+- Jun-Sep 2026: 99,218 tenders, 8,688 IT, 420 open. 3 checklists
+  (20602902 cemetery SaaS, 20571626 AI chatbot, 20586307 OT cyber, 3 lots),
+  116/116 citations verified. buyer_stats 1,635 buyers (520 with a discount).
+  upcoming_renewals 2,721. Demo company id 00000000-0000-0000-0000-000000000001.
+- Key stats: median 2 bidders/award; median discount 10% open / 14%
+  simplified (competitive only; overall 6% incl. negotiated = 0%).
+
+GOTCHAS LEARNED
+- Some PDFs draw checkboxes and tables as IMAGES: text extraction reads every
+  checkbox as "SI" and misses score tables. Check page images (render with
+  pymupdf get_pixmap and view), or cite placsp_xml.
+- PDF text: use pymupdf, write raw/text/<id>__<label>.txt with
+  "=== PAGE n ===" markers; quotes must be verbatim from the cited page (±1).
+- The first 8 normalised words of a quote are what verify() matches; avoid
+  hyphenated line breaks in quotes.
+- Discount stats: per-lot budget, competitive procedures only, n >= 3, else noise.
+- Testing RLS on Supabase: `set local role authenticated` +
+  set_config('request.jwt.claims','{"sub":"<uuid>","role":"authenticated"}',true).
+  Locally: stub auth.uid() reading current_setting('test.uid').
+
+NEXT (not done)
+- Frontend (Next.js, 7 screens: profile, feed, tender page, checklist, price
+  simulator, vault/drafting, results). Data-side status per screen is in
+  progress.txt section 7d.
+- PDFs -> Supabase Storage; pgvector semantic matching; more history (Jan 2026+);
+  regional sources (Catalonia SODA API, Basque API, Navarra, EU TED); more
+  checklists; daily job secret.
