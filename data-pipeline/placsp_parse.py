@@ -139,7 +139,8 @@ def _requirements(terms_parent: ET.Element | None, lot_id: str | None) -> list[d
 def _doc_ref(ref: ET.Element, kind: str) -> dict:
     return {
         "kind": kind,
-        "name": _text(ref, "cbc:ID") or _text(ref, "cac:Attachment/cac:ExternalReference/cbc:FileName"),
+        # FileName is the human title ("Memoria justificativa"); for general documents cbc:ID is just a UUID
+        "name": _text(ref, "cac:Attachment/cac:ExternalReference/cbc:FileName") or _text(ref, "cbc:ID"),
         "doc_type": _text(ref, "cbc:DocumentTypeCode"),
         "url": _text(ref, "cac:Attachment/cac:ExternalReference/cbc:URI"),
         "hash": _text(ref, "cac:Attachment/cac:ExternalReference/cbc:DocumentHash"),

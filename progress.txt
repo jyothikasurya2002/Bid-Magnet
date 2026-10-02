@@ -1,473 +1,119 @@
-BIDMAGNET – DATA PIPELINE PROGRESS LOG
-======================================
-Owner: Jyothika (data part)    Last updated: 2026-10-02 (evening)
-
-----------------------------------------------------------------------
-0. CURRENT STATUS (read this first)
-----------------------------------------------------------------------
-DONE
-  [x] Pipeline code: fetch -> parse -> IT filter -> CSV/JSON -> Supabase
-  [x] History: June–September 2026: 99,218 tenders, 8,688 IT (420 open),
-      all in Supabase (see section 6)
-  [x] 3 cited checklists, 116/116 citations verified (see section 7):
-        20602902 cemetery SaaS (47), 20571626 AI chatbot (36),
-        20586307 OT cybersecurity, 3 lots (33)
-  [x] BACKEND in Supabase (see section 7e and data-pipeline/API.md):
-        companies (profiles, owner-only) + demo company
-        match_tenders(company): fit score 0-100 with reasons
-        buyer_stats: bidders, discount, top winners per buyer
-        upcoming_renewals: contracts ending in the next 12 months
-        tender_decisions: Go / No-go / Watch
-  [x] Git: commits are local; Jyothika pushes to GitHub manually
-
-WAITING ON JYOTHIKA
-  [ ] Push the latest commits to GitHub
-  [ ] Decide: include business docs (.docx/.pdf) in the repo? (currently excluded)
-  [ ] Add DATABASE_URL as a GitHub repo secret so the daily job runs
-      (Settings -> Secrets and variables -> Actions; use the pooler URL in .env)
-  [ ] Send the frontend person: data-pipeline/API.md, the 3 files in
-      data-pipeline/out/extractions/, and the Supabase Project URL + anon key
-      (Project Settings -> API)
-
-NEXT OPTIONS (data/backend)
-  - Upload PDFs of open tenders to Supabase Storage (app can show them)
-  - Semantic matching (pgvector) on tender titles/descriptions
-  - More checklists (free, by Claude Code) or the paid Claude API for scale
-  - Extend history back to Jan 2026 for stronger buyer stats
-
-----------------------------------------------------------------------
-1. THE IDEA
-----------------------------------------------------------------------
-BidMagnet (formerly Tender Copilot) helps Spanish IT companies (20-500 staff)
-win public contracts. These companies find tenders late, can't judge whether
-a tender is worth it, lose bids over a missing document, and guess at prices.
-The product finds relevant tenders, scores them, and prepares the bid
-groundwork: a checklist with page citations, a price simulation and a
-proposal draft.
+BIDMAGNET – PROGRESS
+====================
+Data & backend owner: Jyothika        Last updated: 2026-10-02
+(Technical details for developers/AI: implementation.txt)
 
 
+1. WHAT IS BIDMAGNET?
+---------------------
+Every year Spanish public bodies (councils, ministries, hospitals,
+universities...) buy billions of euros of IT services through public
+tenders ("licitaciones"). Small and mid-sized IT companies often miss
+out because:
+  - tenders are scattered and found too late,
+  - it's hard to tell which ones are worth bidding for,
+  - the paperwork is long and one missing document gets a bid thrown out,
+  - nobody knows what price will win.
 
-Agreed stack: Supabase (database + file storage + email login), Python
-scripts for data, Next.js on Vercel for the website.
-Demo strategy: real data, a few tenders prepared in depth ahead of time,
-nothing that can fail live.
+BidMagnet is a "virtual bid team" for these companies. A company fills in
+its profile once. BidMagnet then shows the tenders that fit it, explains
+why, and for the ones it chooses, prepares the groundwork: a checklist of
+every required document (each pointing to the exact page of the official
+papers), how the bid is scored, and what price is realistic.
+The company still submits on the official government platform itself.
 
-----------------------------------------------------------------------
-2. SHORT ANSWERS
-----------------------------------------------------------------------
-How much data?   4 months (June–September 2026) + newest live updates.
-                 8,688 IT tenders in Supabase, out of 99,218 total.
-Source?          One so far: PLACSP, the national procurement platform.
-                 Official public XML feed; we are NOT scraping web pages.
-Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
-                 once a day (on 2 Oct at 10:47 its last update was 1 Oct
-                 20:17). Our daily job is written but NOT switched on yet
-                 (needs the GitHub push + secret).
 
-----------------------------------------------------------------------
-3. THE WHOLE FLOW
-----------------------------------------------------------------------
+2. HOW IT WORKS (in plain words)
+--------------------------------
+  1. COLLECT    Every day we download all new public tenders from the
+                national platform (PLACSP) and keep the IT ones.
+  2. UNDERSTAND We read the key facts (budget, deadline, buyer, who won
+                before) and, for chosen tenders, the 100+ page documents,
+                turning them into a checklist with page references.
+  3. MATCH      For each company we score every open tender from 0 to 100
+                and list the reasons ("in your region", "needs a
+                certificate you don't have", "only 5 days left").
+  4. PREPARE    Checklist, scoring rules, price formula, warnings, and
+                history of the buyer and competitors.
 
- PLACSP (government)          YOUR LAPTOP (data-pipeline/)                SUPABASE (cloud DB)
- -------------------          ----------------------------                -------------------
-                        (1) placsp_fetch.py
- Monthly zip (history) ---->  raw/placsp_202609.zip  (304 MB)
- Live feed (newest)    ---->  raw/live/page_*.atom   (27 MB)
-                                    |
-                        (2) placsp_parse.py   XML -> clean records,
-                                    |         keep latest version, tag IT
-                        (3) build_dataset.py  filter IT, write files, stats
-                                    v
-                              out/tenders.jsonl (29 MB) --(4) load_supabase.py--> tenders (3,754)
-                              out/*.csv (Excel)                                   tender_criteria (11,835)
-                              out/stats.md                                        tender_documents (38,049)
-                                    |                                             tender_results (3,193)
- Tender PDFs <---- (5) placsp_fetch.py docs                                       tender_requirements (14,737)
-      |                                                                                  |
-      +------------>  raw/docs/<id>/*.pdf (2.7 MB, 2 tenders)                            |
-                                    |                                                    |
-                        (6) extract_tender.py   PDF -> cited checklist + verify          |
-                                    v                                                    |
-                              out/extractions/<id>.json --(4) load_supabase.py--> tender_extractions (1)
-                                                                                         |
-                                                              (7) Next.js app reads <----+
+  Example: a 25-person software firm in Valencia opens BidMagnet and sees
+  "85/100 – Cemetery management software, La Vall d'Uixó, 3,704 EUR,
+  18 days left. Warning: needs ENS security certification."
 
-----------------------------------------------------------------------
-4. STEP BY STEP
-----------------------------------------------------------------------
 
-(1) FETCHING – placsp_fetch.py
-  PLACSP publishes tenders as Atom feeds: a standard "list of updates"
-  format, like a news feed, where each item is a block of XML (CODICE).
+3. WHAT IS BUILT SO FAR
+-----------------------
+  Part                                   Status
+  Daily tender collection                Built (switches on once the GitHub
+                                         secret is added)
+  Database (Supabase, EU servers)        Built and filled
+  9 months of tenders (Jan–Sep 2026)     Loaded
+  Fit score for a company                Built
+  Buyer history (who wins, discounts)    Built
+  Competitor profiles (who wins what)    Built
+  Renewal radar (contracts ending soon)  Built
+  Search box (Spanish-aware)             Built
+  Document checklists with page refs     3 demo tenders done
+  Website / app screens                  Not started (frontend team)
 
-  Mode         Command               What you get                                 Use
-  monthly zip  month 202609          every tender touched that month              history (buyers, winners, prices)
-                                     (193 files, 2.9 GB XML unzipped)
-  live feed    live --pages 3        newest ~500 updates per page, newest first;  daily updates
-                                     each page links to the next older one
-  documents    docs --open-only      PCAP + PPT PDFs for tenders still open       checklist extraction
 
-  Problems handled:
-  - Certificate: PLACSP's HTTPS certificate is issued by FNMT (Spanish
-    government CA), which Mac/Linux don't trust by default. We load
-    certs/fnmt_chain.pem explicitly instead of switching security off.
-  - Slow, flaky server (~100 KB/s, dropped connections, no resume):
-    3 retries; downloads go to a .part file first so a half file never
-    looks complete.
+4. KEY NUMBERS (January–September 2026)
+---------------------------------------
+  - 178,645 public tenders published; 16,134 are IT; 424 open right now.
+  - 3,882 different companies won IT contracts; the biggest are
+    Telefónica, Inetum, Indra, Orange and Vodafone.
+  - 4,588 IT contracts are expected to end in the next 12 months
+    (chances to replace the current supplier).
+  - Usually only 2 companies bid for an IT contract (median).
+  - In competitive tenders, winners bid about 10–14% below the budget.
+  - 90% of awards show who won; 99% show how many bids came in.
+  - Database size: see the storage note in section 7.
 
-(2) PARSING – placsp_parse.py
-  - Streams the XML one tender at a time, so 2.9 GB never needs to fit in
-    memory. A full month takes about 2 minutes.
-  - Per tender it extracts:
-      basics        id, title, status, link, last-updated time
-      buyer         name, tax ID (NIF), city, place in government hierarchy
-      money         budget excl./incl. VAT, estimated total value
-      what          CPV codes, contract type, procedure, duration, lots
-      when          bid deadline date and time
-      criteria      each award criterion + weight (e.g. "Price, 70")
-      requirements  solvency (turnover, experience), declarations, classification
-      documents     links to PCAP, PPT, annexes, award notices
-      results       winner + NIF, bids received, lowest/highest bid,
-                    award amount, date
-  - IT filter on CPV codes: 72* (IT services) and 48* (software) = core;
-    302* = hardware; 3242*/6421* = telecom/network.
-  - Duplicates: a tender reappears at every status change
-    (PUB open -> EV evaluating -> ADJ awarded -> RES resolved).
-    latest_versions() keeps only the newest version. It also handles
-    deletion markers ("tombstones") for withdrawn tenders.
 
-(3) BUILDING – build_dataset.py
-  Keeps only IT tenders and writes to out/:
-    tenders.jsonl   full nested record per tender (29 MB); this is what
-                    gets loaded into Supabase
-    *.csv           tenders, criteria, documents, results, requirements
-                    (open in Excel)
-    stats.md        coverage numbers
-  Also works out: region (from the EU NUTS location code), price weight,
-  and whether the PCAP/PPT PDFs exist.
+5. THE THREE DEMO TENDERS
+-------------------------
+  - Cemetery software, La Vall d'Uixó (3.7k EUR): easy entry, but its two
+    official documents contradict each other on the security level.
+  - AI chatbot, Canary Islands Government (50.7k EUR): price barely
+    matters, and the requirements look written for one existing supplier.
+  - Cybersecurity, Aguas de Lorca (142k EUR, 3 lots): heavy certification
+    requirements; bidding for all 3 lots gets you excluded.
+  All 116 page references were checked against the original PDFs.
 
-(4) STORING – load_supabase.py -> Supabase
-  Table                 One row =                 Used for
-  tenders               one tender                feed, search, filters, deadline board
-  tender_criteria       one award criterion       "Price 70%, training 10%"
-  tender_documents      one PDF link              download links
-  tender_results        one award (per lot)       buyer profile: winners, discounts, bid counts
-  tender_requirements   one requirement           eligibility check
-  tender_extractions    one cited checklist       checklist screen
 
-  Rules:
-  - Newer wins: a tender is only overwritten if the incoming version is
-    newer, so re-runs and out-of-order loads are safe.
-  - Batches of 200, saved as it goes: a full month loads in 16 seconds,
-    and an interruption doesn't lose everything.
-  - Security: logged-in users can read; only the pipeline (with the DB
-    password) can write.
-  - Space: 52 MB of 500 MB free, so room for about 8-9 more months.
+6. NEXT STEPS
+-------------
+  Jyothika:
+    [ ] Push the latest commits to GitHub
+    [ ] Add the DATABASE_URL secret in GitHub so the daily update runs
+    [ ] Send the frontend team: data-pipeline/API.md, the 3 checklist files
+        (data-pipeline/out/extractions/), Supabase Project URL + anon key
+  Data/backend (Claude):
+    [ ] Put the PDFs of open tenders into Supabase Storage
+    [ ] Smarter matching by meaning (AI embeddings)
+    [ ] Regional platforms (Catalonia, Basque Country, Navarre) and EU TED
+  Team:
+    [ ] Mockups/screens using the real demo data (see API.md)
 
-(5) PDFs
-  - Supabase stores only the links (38,049 of them).
-  - Downloaded so far: 4 PDFs for 2 open tenders, on the laptop in
-    raw/docs/. NOT in Supabase Storage yet.
 
-(6) CITED CHECKLIST – extract_tender.py
-  - Input: a tender's PDFs. Output: out/extractions/<id>.json with:
-      summary, key dates, envelopes, mandatory documents, eligibility,
-      award criteria, price formula, abnormally-low-bid rule,
-      exclusion risks, contradictions.
-  - Every item carries doc + page + quote.
-  - Verification: the script opens the PDF and checks that the quote
-    really appears on that page (verified: true/false).
-  - Two ways to run it:
-      With Claude API: automatic; needs a paid key (~$0.50-1 per tender).
-      Free:            Claude Code writes the JSON in chat, then run
-                       `uv run --with pymupdf extract_tender.py <id> --verify`.
+7. STORAGE NOTE (Supabase free tier = 500 MB)
+---------------------------------------------
+  Before: 154 MB for 4 months (8,688 IT tenders).
+  Now:    128 MB for 9 months (16,134 IT tenders), about 26% of the limit.
+  How: removed a duplicate copy of every tender, stopped rewriting tenders
+  that didn't change, and cleaned up space left by earlier reloads.
+  Each tender now takes ~8 KB instead of ~18 KB. Room for roughly 2 more
+  years of IT tenders before the free tier is full. The PDFs themselves
+  are NOT stored yet (only their links); that would use Supabase Storage
+  (1 GB free), which is separate.
 
-(7) USING IT (not built yet)
-  The Next.js app reads Supabase with the Project URL + anon key:
-  feed of open IT tenders, tender page, buyer profile (tender_results),
-  checklist (tender_extractions).
 
-----------------------------------------------------------------------
-5. HOW "REAL-TIME" WILL WORK (daily job)
-----------------------------------------------------------------------
-  Every day 05:30 UTC, GitHub Actions (.github/workflows/daily-ingest.yml):
-    1. placsp_fetch.py live --pages 3     (~1,500 newest updates)
-    2. build_dataset.py raw/live          (parse + IT filter)
-    3. load_supabase.py                   (newer-wins upsert)
-  -> new tenders appear the next morning; status changes (e.g. a tender
-     gets awarded) update the same row.
-  To switch it on: push to GitHub + add the DATABASE_URL secret.
-  Running more often adds little: PLACSP refreshes about once a day.
-
-----------------------------------------------------------------------
-6. RESULTS (numbers for Saturday)
-----------------------------------------------------------------------
-  JUNE–SEPTEMBER 2026 (4 months, now in Supabase)
-  99,218 tenders; 8,688 IT (6,980 software & IT services, 1,440 hardware,
-  268 telecom). 420 IT tenders open for bids.
-  Region: Madrid 2,760 | Valencia 1,197 | Andalucía 1,164 | Canarias 584
-  Coverage: PDF links 82% | criteria+weights 90% | bid count 99% |
-  winner NIF 90% | lowest/highest bid 62% | award PDFs 69%
-  Median 2 bidders per IT award; median discount 6% (4,511 awards).
-  The September-only numbers below tell the same story.
-
-  SEPTEMBER 2026 ONLY
-  42,574 tenders in the month; 3,754 IT (3,058 software & IT services,
-  564 hardware, 132 telecom). 406 IT tenders open for bids.
-
-  Region:     Madrid 1,117 | Andalucía 543 | Valencia 506 | Canarias 225 |
-              Baleares 193
-  Procedure:  Open 1,783 | Simplified open 1,090 (short deadlines, SME
-              territory) | Restricted 363 | Negotiated 356
-
-  Data available for free from the XML:
-    PDF links (PCAP/PPT)                   87%
-    Award criteria + weights               87%
-    Bids received (awarded tenders)        99%
-    Winner tax ID (NIF)                    91%
-    Lowest/highest bid                     65%
-    Award resolution PDFs                  71%
-
-  Market insights:
-    - Median 2 bidders per IT award; median discount 5%. Competition is
-      thin, so an SME that finds the tender and bids correctly has a
-      real chance.
-    - Top buyer: the State's centralised purchasing directorate
-      (191 tenders), then Valencia city council, mutual insurers,
-      Balearic health service.
-    - Top winners: Orange, Vodafone, Atlantis, Inetum, Redes System,
-      SCC, Izertis, ASAC, ABAST.
-
-----------------------------------------------------------------------
-7. CHECKLISTS (out/extractions/<id>.json, also in Supabase)
-----------------------------------------------------------------------
-  The three demo tenders were chosen to contrast with each other:
-
-  Tender     What                          Budget     Deadline        Main lesson
-  20602902   Cemetery SaaS, La Vall        3.7k EUR   20 Oct 23:59    easy entry, but contradictions
-             d'Uixó                                                   between the two documents
-  20571626   AI chatbot, Canary Islands    50.7k EUR  11 Oct 23:59    likely incumbent; price barely
-             Government                                               matters
-  20586307   OT cybersecurity, Aguas de    142k EUR   9 Oct 13:00     heavy requirements; vendor
-             Lorca (3 lots)                (3 lots)                 lock-in; checkboxes are images
-
-  How to pick more: open IT tenders (status PUB, deadline >= today,
-  CPV 72*/48*, PCAP+PPT available, budget 30k-600k). 152 match today.
-  Fetch PDFs: python placsp_fetch.py docs --ids <id1>,<id2>
-
---- 7a. TENDER 20602902 ---
-  Cemetery-management SaaS, La Vall d'Uixó council. Budget 3,704.18 EUR
-  excl. VAT. Bid deadline 20 Oct 2026 23:59. PCAP 93 pages + PPT 24 pages.
-  47 items, 47/47 citations verified.
-  - One envelope (sobre único) with 9 documents; 9 more only for the winner.
-  - No solvency proof needed; ROLECE registration required; ENS security
-    certification required (ISO 27001 does NOT replace it).
-  - Criteria: price 70, availability 5, P1 response 5, P1 workaround 5,
-    P1 resolution 5, extra training 10.
-  - Price formula: Pi = 70 x (Bi / Bmax). Abnormally low: art. 85 RGLCAP.
-  - 4 contradictions between the documents, e.g. ENS MEDIUM (PCAP p.74)
-    vs BASIC (PPT p.8); minimum training 12 h (PCAP p.21) vs 4 h (PPT p.11);
-    availability 99% (PPT) vs scoring from 99.5% (PCAP); extension
-    23 vs 24 months.
-
---- 7b. TENDER 20571626 – AI chatbot, Viceconsejería de Justicia (Canarias) ---
-  Budget 50,696.25 EUR excl. IGIC (Canary tax 7%). Deadline 11 Oct 2026
-  23:59; questions until ~7 Oct. Ends 31 Dec 2026. 36/36 citations verified.
-  - Minimum team of 13 people (PM, 3 full-stack, 2 cloud, 3 AI, 4 content).
-  - LIKELY INCUMBENT: the project manager needs 3 years building case-
-    management systems for Gender Violence Courts. It is both a minimum
-    requirement and the biggest quality criterion (15 pts). Very few people
-    in Spain qualify.
-  - Price 60 pts with a LOG formula: the max allowed 20% discount gains only
-    ~1.2 points (checked: 58.76 vs 60). Discounts above 20% score 0.
-    The contract is won on quality (cloud partner badge 10, ENS level 10,
-    PM experience 15, on-site presence 5).
-  - Must be in ROLECE or the Canary Islands register by the deadline.
-  - Boilerplate inconsistencies: "includes IGIC" and "taxes NOT included" in
-    one sentence; mentions lots but has none; Annex IV vs VI.
-
---- 7c. TENDER 20586307 – OT cybersecurity, Aguas de Lorca (water utility) ---
-  142,000 EUR excl. VAT in 3 lots: L1 firewall 31k (4 yrs), L2 anomaly probe
-  19k (1 yr), L3 SOC operation 92k (4 yrs). Deadline 9 Oct 2026 13:00.
-  Urgent procedure. 33/33 citations verified.
-  - Max 2 lots per bidder; bidding on all 3 = exclusion with no fix allowed.
-  - Requirements: ISO 27001, ISO 9001, ENS, official vendor partner for 6+
-    months; technicians with water-sector OT security experience in the last
-    12 months (named in the bid, with client certificates); ISA 62443 or
-    SANS certification. No subcontracting. 5% definitive guarantee.
-  - Scoring: price 80 + Palo Alto partner 10 + university teaching 10
-    (lots 1, 3); price 80 + Claroty partner 20 (lot 2).
-  - Ecosystem lock-in: renewal of installed Palo Alto + Claroty, integration
-    with the Veolia group SOC.
-  - IMPORTANT LESSON: this PDF draws checkboxes and the scoring table as
-    images. Plain text extraction read every checkbox as "SI" (variants,
-    price revision, data processing...) and missed the points table
-    entirely. Checked on the page images. Production extraction must use
-    page images, which the Claude API does when given the PDF.
-  - The scoring weights are cited from the PLACSP XML (doc "placsp_xml"),
-    which matches the images. extract_tender.py --verify now checks
-    those quotes against the tender's XML record.
-
-----------------------------------------------------------------------
-7d. THE PRODUCT FROM A CUSTOMER'S VIEW (and what exists today)
-----------------------------------------------------------------------
-  Example customer: "Soluciones Marta S.L.", 25-person software company in
-  Valencia (web apps, IT maintenance), ISO 27001, no ENS, ~1.5M EUR
-  turnover, never bid before.
-
-  Screen 1  PROFILE (once): services, region, size/turnover, certifications
-            (ISO 27001 yes, ENS no), ROLECE yes/no, 3-5 past projects.
-            Drives everything else.
-            Status: not built (needs a companies table + form).
-
-  Screen 2  "TENDERS FOR YOU" FEED: ranked list with a fit score and reasons,
-            e.g.  92  Gandia municipal software  48k EUR  12 days
-                      ok sector, ok region, ok no ENS, warn ROLECE needed
-            plus filters and daily email alerts.
-            Status: data READY (3,754 IT tenders, 406 open); fit score not
-            built; screen not built; daily job not switched on.
-
-  Screen 3  TENDER PAGE "Should we bid?": plain-English summary;
-            eligibility table (requirement vs. you: meets / gap / partner);
-            how it's scored; buyer history (past winners, bidder count,
-            typical discount, current holder); warnings (contradictions);
-            Go / No-go / Watch with a reason.
-            Status: summary/scoring/eligibility/warnings READY for 3 demo
-            tenders; buyer history data loaded but not summarised (1 month,
-            more downloading); you-vs-requirement needs Screen 1; decision
-            buttons not built.
-
-  Screen 4  BID CHECKLIST: tick-list of every document per envelope, each
-            linked to the PDF page; "only if you win" list; "how bids get
-            thrown out here".
-            Status: data READY for 3 demo tenders (116/116 citations
-            verified); other tenders need the Claude API or Claude Code;
-            screen + PDF viewer not built.
-
-  Screen 5  PRICE SIMULATOR: slider -> price points, abnormally-low warning,
-            buyer's historical discounts.
-            Status: formulas extracted for 3 tenders; historical discounts in
-            data; simulator not built (simple frontend maths).
-
-  Screen 6  DOCUMENT VAULT + PROPOSAL DRAFT: stored certificates with expiry
-            alerts; first draft of the technical proposal from past projects.
-            Status: not built (later; show as mockup).
-
-  Screen 7  SUBMIT + RESULTS: she submits on PLACSP herself (we prepare, we
-            don't submit). Later: "You came 2nd of 3, winner bid 16% below".
-            Status: award data arrives with the feed; linking to her bid not
-            built.
-
-  Summary:            DATA (Jyothika)            SCREEN (frontend)
-    1 Profile         not built                  not built
-    2 Feed            READY (3,754 tenders)      not built  + fit score not built
-    3 Tender page     READY for 3 demo tenders   not built  + buyer history partial
-    4 Checklist       READY for 3 demo tenders   not built
-    5 Price sim       READY (formulas + history) not built
-    6 Vault/drafting  not built                  not built
-    7 Results         READY (award data)         not built
-  -> The data foundation is solid; nothing is visible yet. For Saturday,
-     Miguel's mockups should use the real data from the 3 demo tenders.
-  -> Highest-value next data work: fit score (Screen 2), buyer profiles
-     (Screen 3), and a demo company profile both can use.
-
-----------------------------------------------------------------------
-7e. BACKEND (Supabase) – what the app can call today
-----------------------------------------------------------------------
-  Files: data-pipeline/backend.sql (run after schema.sql; safe to re-run)
-         data-pipeline/API.md (how the frontend calls everything)
-  No separate server: Next.js uses supabase-js directly. Signed-in users only.
-
-  companies          Screen 1. Profile: sector codes, keywords, regions,
-                     turnover, certifications, ROLECE, budget range.
-                     Each user sees only their own + the demo company
-                     "Soluciones Marta S.L. (demo)",
-                     id 00000000-0000-0000-0000-000000000001.
-  match_tenders()    Screen 2. supabase.rpc('match_tenders', {p_company}).
-                     Open tenders matching the company, score 0-100 and a
-                     list of reasons (ok / warn / gap). Rule-based:
-                     sector +30, keywords +10, region +15, turnover vs. 1.5x
-                     annual value +/-15, ISO/ENS/classification gaps -10,
-                     days left +10..-20, low competition +10, simplified +5.
-                     Uses XML requirements AND the cited checklist if present.
-                     Demo company: 275 matches; top ones are Valencia/Murcia
-                     software & maintenance tenders. The cemetery tender
-                     shows "ENS required, you don't have it" (from checklist).
-  buyer_stats        Screen 3. Per buyer: IT tenders, awards, median bidders,
-                     median discount (competitive procedures only, per lot,
-                     null if < 3 awards), top 5 winners. 1,635 buyers;
-                     520 with a reliable discount figure. Refreshed on load.
-  upcoming_renewals  Renewal radar: 2,721 awarded contracts ending in the next
-                     12 months, with the incumbent. End date is estimated.
-  tender_decisions   Go / No-go / Watch + reason, per company and tender.
-
-  Tested locally (with Supabase roles imitated) and on the real Supabase:
-  user A can't see user B's company; logged-out visitors see nothing.
-
-  New finding for the pitch: the overall 6% median discount is pulled down by
-  negotiated contracts without competition (0%). In COMPETITIVE procedures
-  the median discount is 10% (open) and 14% (simplified).
-
-  Known limitations: some buyers' discounts look odd (e.g. ~52% at one
-  national institute; probably unit-price contracts where the "budget" is a
-  ceiling). Certification requirements are detected only where the XML or a
-  checklist mentions them.
-
-----------------------------------------------------------------------
-8. SETUP NOTES & FIXES
-----------------------------------------------------------------------
-  - Supabase project in Ireland (eu-west-1): EU, OK for GDPR.
-  - .env holds DATABASE_URL (never committed). The password contains '@',
-    so it is stored URL-encoded as %40. Use the Session pooler URL: the
-    "Direct connection" host is IPv6-only and fails on this network and
-    on GitHub Actions.
-  - First full Supabase load was stopped after the 1-hour limit with
-    nothing saved (one round trip per row to Ireland). Rewritten to batch
-    200 rows and commit as it goes: now 16 seconds.
-  - No paid Claude API key: extraction is done for free by Claude Code
-    in chat and checked with --verify.
-
-----------------------------------------------------------------------
-9. GIT
-----------------------------------------------------------------------
-  Local repo at the project root, branch main, 4 commits:
-    9581c17 Add PLACSP data pipeline
-    cdc9ddc Batch Supabase loader so a full month loads in seconds
-    b8bdefc Add progress log for the data pipeline
-    019e74a Add chatbot and cybersecurity checklists; verify XML-sourced citations
-  Excluded: .env (passwords), raw/ downloads, logs/, business .docx/.pdf,
-  .claude/settings.local.json. data-pipeline/Summary(1).txt (Jyothika's
-  saved copy of the explanation) is NOT committed; left on disk.
-  Jyothika pushes to GitHub manually after each commit.
-
-----------------------------------------------------------------------
-10. KNOWN GAPS
-----------------------------------------------------------------------
-  Gap                                  Impact                              Fix
-  Only 1 month of history              thin buyer/competitor profiles      download more months (20-40 min each)
-  Only PLACSP                          missing Catalan/Basque/Navarre-     aggregated regional feed or
-                                       only tenders                        regional APIs later
-  PDFs not in Supabase Storage         app can only link to PLACSP         upload PDFs for open tenders
-  3 checklists                         enough for a demo                   more on request, free
-  Daily job not active                 data goes stale after today         GitHub push + secret
-  IT filter is code-based only         some noise (e.g. a data-protection  smarter matching later
-                                       officer tender tagged as IT)
-
-----------------------------------------------------------------------
-11. CHANGE LOG
-----------------------------------------------------------------------
-  2026-10-02  Pipeline built and tested; PLACSP certificate fix;
-              September 2026 processed; Supabase connected (pooler,
-              encoded password) and loaded; loader batched (1h+ -> 16s);
-              checklist for 20602902 (47/47 verified); local git repo
-              with 2 commits; GitHub CLI installed; progress.txt started.
-  2026-10-02  Checklists for 20571626 (AI chatbot) and 20586307 (OT cyber,
-  (later)     3 lots); all 3 checklists loaded to Supabase, 116/116
-              citations verified. Found that some PDFs draw checkboxes and
-              tables as images (text extraction misreads them); added XML
-              citation support. placsp_fetch.py docs --ids. Started
-              downloading June-August 2026 (August done).
-  2026-10-02  Rebuilt with June–September 2026: 8,688 IT tenders loaded.
-  2026-10-02  Backend: companies, match_tenders fit score, buyer_stats,
-  (night)     upcoming_renewals, tender_decisions; API.md for frontend;
-              applied and verified on Supabase.
+8. LOG
+------
+  2026-10-02  Added January–May 2026 (now 9 months); competitor profiles;
+              Spanish search; readable document names; database 154 -> 128 MB.
+  2026-10-02  Built the data pipeline; downloaded and cleaned Jun–Sep 2026;
+              connected Supabase; wrote 3 demo checklists (all references
+              verified); built the backend: fit score, buyer and
+              competitor history, renewal radar, search; wrote the API
+              guide for the frontend; reduced database size.

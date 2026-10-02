@@ -121,7 +121,7 @@ select * from (
     r.lot_id, r.winner_name as incumbent, r.winner_nif as incumbent_nif,
     r.award_amount_no_tax, r.award_date, t.duration, t.duration_unit,
     coalesce(
-      (t.raw->>'period_end')::date,
+      t.period_end,
       coalesce(r.start_date, r.contract_date, r.award_date)
         + case t.duration_unit
             when 'ANN' then make_interval(years => t.duration::int)
@@ -159,7 +159,8 @@ begin
     select t.*,
            (t.deadline_date - current_date) as dleft,
            exists (select 1 from unnest(t.cpv_codes) cpv, unnest(c.cpv_prefixes) p where cpv like p || '%') as sector_ok,
-           (select count(*) from unnest(c.keywords) k where t.title ilike '%' || k || '%')                   as kw_hits,
+           -- Spanish stemming: keyword "aplicaciones" matches "aplicación" in title or buyer
+           (select count(*) from unnest(c.keywords) k where t.search @@ plainto_tsquery('spanish', k))      as kw_hits,
            -- annual value ≈ estimated value spread over the duration (default 1 year)
            coalesce(t.estimated_value, t.budget_no_tax)
              / greatest(case t.duration_unit when 'ANN' then t.duration when 'MON' then t.duration / 12.0
@@ -242,7 +243,64 @@ end $$;
 grant execute on function match_tenders(uuid, int) to authenticated;
 
 -- --------------------------------------------------------------------------
--- 5. Demo company for the showcase (owner = null → visible to every signed-in user)
+-- 5. Search box: Spanish full-text search over title + buyer, best matches first.
+--    select * from search_tenders('mantenimiento web ayuntamiento', true);
+-- --------------------------------------------------------------------------
+create or replace function search_tenders(q text, only_open boolean default true, p_limit int default 50)
+returns table (tender_id text, title text, buyer_name text, region text, status text,
+               budget_no_tax numeric, deadline_date date, rank real)
+language sql stable security invoker as $$
+  select t.id, t.title, t.buyer_name, t.region, t.status, t.budget_no_tax, t.deadline_date,
+         ts_rank(t.search, websearch_to_tsquery('spanish', q))
+  from tenders t
+  where t.search @@ websearch_to_tsquery('spanish', q)
+    and (not only_open or (t.status = 'PUB' and t.deadline_date >= current_date))
+  order by 8 desc, t.deadline_date nulls last
+  limit p_limit
+$$;
+grant execute on function search_tenders(text, boolean, int) to authenticated;
+
+-- --------------------------------------------------------------------------
+-- 6. Competitor profiles: every company that won an IT award in our data.
+--    Refreshed by load_supabase.py.
+-- --------------------------------------------------------------------------
+drop materialized view if exists competitor_stats;
+create materialized view competitor_stats as
+with w as (
+  select r.winner_nif as nif, r.winner_name, r.award_amount_no_tax, r.award_date, r.sme_awarded,
+         t.id as tender_id, t.buyer_nif, t.buyer_name, t.region, t.cpv_codes,
+         case when t.procedure_label not in ('Negociado sin publicidad', 'Derivado de acuerdo marco',
+                                             'Basado en sistema dinámico de adquisición')
+                   and r.lot_id is null and t.budget_no_tax > 0 and r.award_amount_no_tax > 0
+              then 1 - r.award_amount_no_tax / t.budget_no_tax end as discount
+  from tender_results r join tenders t on t.id = r.tender_id
+  where r.winner_nif is not null
+)
+select
+  nif,
+  mode() within group (order by winner_name)            as name,
+  count(*)                                              as awards,          -- per lot
+  count(distinct tender_id)                             as tenders_won,
+  sum(award_amount_no_tax)                              as total_awarded_no_tax,
+  count(distinct buyer_nif)                             as buyers,
+  bool_or(sme_awarded)                                  as is_sme,
+  max(award_date)                                       as last_win,
+  case when count(discount) filter (where discount between -0.05 and 0.9) >= 3
+       then percentile_cont(0.5) within group (order by discount) filter (where discount between -0.05 and 0.9)
+  end                                                   as median_discount,  -- null if < 3 awards
+  (select array_agg(r2 order by n desc) from (select region as r2, count(*) n from w w2
+     where w2.nif = w.nif and region is not null group by region order by n desc limit 3) x) as top_regions,
+  (select jsonb_agg(jsonb_build_object('name', bn, 'nif', bnif, 'wins', n) order by n desc)
+     from (select max(buyer_name) bn, buyer_nif bnif, count(*) n from w w2 where w2.nif = w.nif
+           group by buyer_nif order by n desc limit 5) y)  as top_buyers
+from w
+group by nif;
+create unique index if not exists competitor_stats_nif on competitor_stats (nif);
+revoke all on competitor_stats from anon;
+grant select on competitor_stats to authenticated;
+
+-- --------------------------------------------------------------------------
+-- 7. Demo company for the showcase (owner = null → visible to every signed-in user)
 -- --------------------------------------------------------------------------
 insert into companies (id, owner, name, description, cpv_prefixes, keywords, regions, include_national,
                        annual_turnover, employees, certifications, has_classification, rolece, max_budget)

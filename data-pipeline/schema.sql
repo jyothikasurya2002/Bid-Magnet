@@ -32,9 +32,24 @@ create table if not exists tenders (
   over_eu_threshold boolean,
   has_lots          boolean,
   lots              jsonb,
-  raw               jsonb,                     -- full parsed record, for anything not in a column
-  ingested_at       timestamptz default now()
+  period_start      date,
+  period_end        date,
+  extra             jsonb,                     -- small leftovers not worth a column (summary, urgency, ...)
+  ingested_at       timestamptz default now(),
+  -- Spanish full-text search over title + buyer ("aplicaciones" matches "aplicación")
+  search            tsvector generated always as
+                      (to_tsvector('spanish', coalesce(title, '') || ' ' || coalesce(buyer_name, ''))) stored
 );
+
+-- Migration from the first version (which kept a full JSON copy in `raw`, ~31 MB)
+alter table tenders add column if not exists period_start date;
+alter table tenders add column if not exists period_end date;
+alter table tenders add column if not exists extra jsonb;
+alter table tenders add column if not exists search tsvector generated always as
+  (to_tsvector('spanish', coalesce(title, '') || ' ' || coalesce(buyer_name, ''))) stored;
+drop view if exists upcoming_renewals;          -- depended on raw; recreated by backend.sql
+alter table tenders drop column if exists raw;
+create index if not exists tenders_search on tenders using gin (search);
 create index if not exists tenders_status_deadline on tenders (status, deadline_date);
 create index if not exists tenders_buyer_nif on tenders (buyer_nif);
 create index if not exists tenders_cpv on tenders using gin (cpv_codes);

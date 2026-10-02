@@ -95,7 +95,9 @@ const { data: criteria } = await supabase.from('tender_criteria').select('*').eq
 // requirements from the XML (kind: declaration | technical_solvency | financial_solvency | classification)
 const { data: reqs } = await supabase.from('tender_requirements').select('*').eq('tender_id', tenderId)
 
-// PDF links (kind: pcap = admin terms, ppt = tech specs, notice = award notices, additional, general)
+// PDF links (kind: pcap = admin terms, ppt = tech specs, notice = award notices, additional,
+// general = other official docs: "Memoria justificativa", "Acta del órgano de asistencia",
+// "Informe de valoración..." (evaluation report with competitors' scores))
 const { data: docs } = await supabase.from('tender_documents').select('kind,name,url').eq('tender_id', tenderId)
 
 // buyer profile: "who you're up against"
@@ -114,7 +116,7 @@ const { data: buyer } = await supabase.from('buyer_stats').select('*').eq('buyer
 | `last_award_date` | Most recent award |
 | `top_winners` | `[{name, nif, wins}]`, up to 5 |
 
-**Data window: June–September 2026.**
+**Data window: January–September 2026.**
 
 **Decisions** (Go / No-go / Watch), one per company and tender:
 ```ts
@@ -154,6 +156,41 @@ Checklists exist today for: `20602902` (cemetery SaaS), `20571626` (AI chatbot),
 There's no backend call. Use `checklist.price.formula` plus the buyer's `median_discount`.
 
 As a market reference, the median discount in competitive procedures is about 10% (open) and 14% (simplified), June–Sept 2026.
+
+## Search box (`search_tenders`)
+Spanish-aware full-text search over title and buyer, so "aplicaciones" also matches "aplicación".
+
+```ts
+const { data } = await supabase.rpc('search_tenders', { q: 'mantenimiento web ayuntamiento', only_open: true, p_limit: 50 })
+// -> tender_id, title, buyer_name, region, status, budget_no_tax, deadline_date, rank
+```
+- `q` accepts quotes and `-word` (websearch syntax).
+- Set `only_open: false` to include past tenders.
+
+## Competitor profiles (`competitor_stats`)
+One row per company that won an IT award (January–September 2026).
+
+```ts
+// a competitor
+const { data } = await supabase.from('competitor_stats').select('*').eq('nif', winnerNif).maybeSingle()
+// top competitors overall
+const { data: top } = await supabase.from('competitor_stats').select('*').order('awards', { ascending: false }).limit(20)
+```
+
+| Field | Meaning |
+|---|---|
+| `name` | Company name |
+| `awards` | Awards, counted per lot |
+| `tenders_won` | Distinct tenders won |
+| `total_awarded_no_tax` | Total value won |
+| `buyers` | Number of distinct buyers |
+| `is_sme` | Whether it's flagged as an SME |
+| `last_win` | Most recent win |
+| `median_discount` | Competitive procedures only; null if fewer than 3 awards |
+| `top_regions` | Its main regions |
+| `top_buyers` | `[{name, nif, wins}]` |
+
+Link from `buyer_stats.top_winners[].nif` or `upcoming_renewals.incumbent_nif`.
 
 ## Renewal radar (`upcoming_renewals`)
 ```ts

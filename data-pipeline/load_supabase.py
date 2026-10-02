@@ -4,8 +4,8 @@
     uv run --with "psycopg[binary]" load_supabase.py
 
 DATABASE_URL: Supabase dashboard → Connect → Session pooler connection string.
-A tender is only overwritten when the incoming version is newer; its child rows
-(criteria, documents, results, requirements) are replaced with it.
+A tender is only rewritten when the incoming version is newer (or with --force,
+after a parser or schema change); its child rows are replaced with it.
 """
 
 from __future__ import annotations
@@ -22,14 +22,18 @@ from build_dataset import region_of
 
 ROOT = Path(__file__).parent
 BATCH = 200
+FORCE = "--force" in sys.argv   # rewrite tenders even if unchanged (after a parser/schema change)
 
 TENDER_COLS = [
     "id", "folder_id", "title", "link", "updated", "status", "status_label", "buyer_name", "buyer_nif",
     "buyer_dir3", "buyer_city", "buyer_hierarchy", "region", "contract_type", "contract_type_label",
     "procedure_code", "procedure_label", "budget_no_tax", "budget_with_tax", "estimated_value", "cpv_codes",
     "it_segment", "nuts_code", "duration", "duration_unit", "deadline_date", "deadline_time",
-    "over_eu_threshold", "has_lots", "lots", "raw",
+    "over_eu_threshold", "has_lots", "lots", "period_start", "period_end", "extra",
 ]
+# Parsed fields that have no column of their own; kept small on purpose (no full JSON copy)
+EXTRA_KEYS = ["entry_url", "buyer_type_code", "buyer_profile_url", "contract_subtype", "location",
+              "urgency_code", "submission_method", "summary"]
 CHILDREN = {
     "tender_criteria": ("criteria", ["lot_id", "type", "subtype", "description", "note", "weight"]),
     "tender_documents": ("documents", ["kind", "name", "doc_type", "notice_type", "url", "hash", "issue_date"]),
@@ -46,7 +50,8 @@ def _bool(v):
 
 
 def tender_row(t: dict) -> list:
-    row = dict(t, region=region_of(t), lots=Jsonb(t["lots"]), raw=Jsonb(t),
+    row = dict(t, region=region_of(t), lots=Jsonb(t["lots"]),
+               extra=Jsonb({k: t.get(k) for k in EXTRA_KEYS if t.get(k) is not None}),
                over_eu_threshold=_bool(t["over_eu_threshold"]))
     return [row.get(c) for c in TENDER_COLS]
 
@@ -73,7 +78,7 @@ def main() -> None:
     updates = ", ".join(f"{c} = excluded.{c}" for c in TENDER_COLS if c != "id")
     upsert = (f"insert into tenders ({cols}) values ({placeholders}) "
               f"on conflict (id) do update set {updates}, ingested_at = now() "
-              f"where tenders.updated is null or excluded.updated >= tenders.updated returning id")
+              f"where tenders.updated is null or excluded.updated {'>=' if FORCE else '>'} tenders.updated returning id")
 
     # Batched: executemany pipelines the statements, so a batch costs a few round trips
     # instead of several per tender. Each batch is committed, so an interrupted run keeps
@@ -120,12 +125,13 @@ def main() -> None:
         conn.commit()
         print(f"loaded {loaded} extractions")
 
-        # buyer_stats (backend.sql) is a materialized view: recompute it from the new data
-        cur.execute("select 1 from pg_matviews where matviewname = 'buyer_stats'")
-        if cur.fetchone():
-            cur.execute("refresh materialized view buyer_stats")
-            conn.commit()
-            print("refreshed buyer_stats")
+        # Materialized views from backend.sql: recompute them from the new data
+        for view in ("buyer_stats", "competitor_stats"):
+            cur.execute("select 1 from pg_matviews where matviewname = %s", [view])
+            if cur.fetchone():
+                cur.execute(f"refresh materialized view {view}")
+                conn.commit()
+                print(f"refreshed {view}")
 
 
 if __name__ == "__main__":
