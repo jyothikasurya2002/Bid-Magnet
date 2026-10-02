@@ -33,7 +33,7 @@ TENDER_COLS = [
 CHILDREN = {
     "tender_criteria": ("criteria", ["lot_id", "type", "subtype", "description", "note", "weight"]),
     "tender_documents": ("documents", ["kind", "name", "doc_type", "notice_type", "url", "hash", "issue_date"]),
-    "tender_results": ("results", ["lot_id", "result_code", "award_date", "received_tenders",
+    "tender_results": ("results", ["lot_id", "result_code", "award_date", "start_date", "received_tenders",
                                    "sme_received_tenders", "lowest_bid", "highest_bid", "winner_nif",
                                    "winner_name", "award_amount_no_tax", "award_amount_with_tax",
                                    "sme_awarded", "contract_date"]),
@@ -119,6 +119,13 @@ def main() -> None:
             loaded += 1
         conn.commit()
         print(f"loaded {loaded} extractions")
+
+        # buyer_stats (backend.sql) is a materialized view: recompute it from the new data
+        cur.execute("select 1 from pg_matviews where matviewname = 'buyer_stats'")
+        if cur.fetchone():
+            cur.execute("refresh materialized view buyer_stats")
+            conn.commit()
+            print("refreshed buyer_stats")
 
 
 if __name__ == "__main__":

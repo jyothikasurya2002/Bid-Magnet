@@ -23,10 +23,21 @@ python build_dataset.py raw/live --segments all          # + hardware & telecom
 # 3. PDFs for tenders still open
 python placsp_fetch.py docs --open-only --limit 50
 
-# 4. Load into Supabase (run schema.sql in the SQL editor first)
+# 4. Load into Supabase (run schema.sql, then backend.sql, in the SQL editor first)
 export DATABASE_URL="postgresql://..."    # Supabase → Connect → Session pooler
 uv run --with "psycopg[binary]" load_supabase.py
 ```
+
+## Backend (Supabase)
+
+`schema.sql` holds the tender tables. `backend.sql` adds everything the app uses:
+- **`companies`:** company profiles; each user sees only their own, plus a demo company.
+- **`tender_decisions`:** Go / No-go / Watch decisions.
+- **`buyer_stats`:** per buyer: bidders, discount, top winners. Refreshed by `load_supabase.py`.
+- **`upcoming_renewals`:** contracts ending in the next 12 months.
+- **`match_tenders(company)`:** fit score from 0 to 100, with reasons.
+
+How the frontend calls them: **[API.md](API.md)**.
 
 ## Outputs (`out/`)
 

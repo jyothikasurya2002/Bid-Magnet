@@ -71,6 +71,7 @@ create table if not exists tender_results (
   lot_id                text,
   result_code           text,
   award_date            date,
+  start_date            date,
   received_tenders      int,
   sme_received_tenders  int,
   lowest_bid            numeric,

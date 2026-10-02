@@ -7,26 +7,33 @@ Owner: Jyothika (data part)    Last updated: 2026-10-02 (evening)
 ----------------------------------------------------------------------
 DONE
   [x] Pipeline code: fetch -> parse -> IT filter -> CSV/JSON -> Supabase
-  [x] September 2026 downloaded and processed (42,574 tenders, 3,754 IT)
-  [x] Supabase loaded: 3,754 IT tenders (52 MB of the 500 MB free tier)
+  [x] History: June–September 2026: 99,218 tenders, 8,688 IT (420 open),
+      all in Supabase (see section 6)
   [x] 3 cited checklists, 116/116 citations verified (see section 7):
         20602902 cemetery SaaS (47), 20571626 AI chatbot (36),
         20586307 OT cybersecurity, 3 lots (33)
-  [x] Git repo created locally with 4 commits (nothing pushed yet)
-
-  [x] History extended to June–September 2026: 99,218 tenders, 8,688 IT
-      (420 open), all loaded into Supabase (see section 6).
+  [x] BACKEND in Supabase (see section 7e and data-pipeline/API.md):
+        companies (profiles, owner-only) + demo company
+        match_tenders(company): fit score 0-100 with reasons
+        buyer_stats: bidders, discount, top winners per buyer
+        upcoming_renewals: contracts ending in the next 12 months
+        tender_decisions: Go / No-go / Watch
+  [x] Git: commits are local; Jyothika pushes to GitHub manually
 
 WAITING ON JYOTHIKA
-  [ ] Run `gh auth login` in the VS Code terminal, then tell Claude "logged in"
+  [ ] Push the latest commits to GitHub
   [ ] Decide: include business docs (.docx/.pdf) in the repo? (currently excluded)
-  [ ] Decide: add DATABASE_URL as a GitHub secret so the daily job runs?
-  [ ] Send the frontend person: out/extractions/20602902.json, plus the Supabase
-      Project URL and anon key (Project Settings -> API)
+  [ ] Add DATABASE_URL as a GitHub repo secret so the daily job runs
+      (Settings -> Secrets and variables -> Actions; use the pooler URL in .env)
+  [ ] Send the frontend person: data-pipeline/API.md, the 3 files in
+      data-pipeline/out/extractions/, and the Supabase Project URL + anon key
+      (Project Settings -> API)
 
-NEXT OPTIONS
-  - Fit score: rank tenders against a sample company profile
-  - Buyer profile per tender (past winners, discount, bidder count)
+NEXT OPTIONS (data/backend)
+  - Upload PDFs of open tenders to Supabase Storage (app can show them)
+  - Semantic matching (pgvector) on tender titles/descriptions
+  - More checklists (free, by Claude Code) or the paid Claude API for scale
+  - Extend history back to Jan 2026 for stronger buyer stats
 
 ----------------------------------------------------------------------
 1. THE IDEA
@@ -365,6 +372,48 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
      (Screen 3), and a demo company profile both can use.
 
 ----------------------------------------------------------------------
+7e. BACKEND (Supabase) – what the app can call today
+----------------------------------------------------------------------
+  Files: data-pipeline/backend.sql (run after schema.sql; safe to re-run)
+         data-pipeline/API.md (how the frontend calls everything)
+  No separate server: Next.js uses supabase-js directly. Signed-in users only.
+
+  companies          Screen 1. Profile: sector codes, keywords, regions,
+                     turnover, certifications, ROLECE, budget range.
+                     Each user sees only their own + the demo company
+                     "Soluciones Marta S.L. (demo)",
+                     id 00000000-0000-0000-0000-000000000001.
+  match_tenders()    Screen 2. supabase.rpc('match_tenders', {p_company}).
+                     Open tenders matching the company, score 0-100 and a
+                     list of reasons (ok / warn / gap). Rule-based:
+                     sector +30, keywords +10, region +15, turnover vs. 1.5x
+                     annual value +/-15, ISO/ENS/classification gaps -10,
+                     days left +10..-20, low competition +10, simplified +5.
+                     Uses XML requirements AND the cited checklist if present.
+                     Demo company: 275 matches; top ones are Valencia/Murcia
+                     software & maintenance tenders. The cemetery tender
+                     shows "ENS required, you don't have it" (from checklist).
+  buyer_stats        Screen 3. Per buyer: IT tenders, awards, median bidders,
+                     median discount (competitive procedures only, per lot,
+                     null if < 3 awards), top 5 winners. 1,635 buyers;
+                     520 with a reliable discount figure. Refreshed on load.
+  upcoming_renewals  Renewal radar: 2,721 awarded contracts ending in the next
+                     12 months, with the incumbent. End date is estimated.
+  tender_decisions   Go / No-go / Watch + reason, per company and tender.
+
+  Tested locally (with Supabase roles imitated) and on the real Supabase:
+  user A can't see user B's company; logged-out visitors see nothing.
+
+  New finding for the pitch: the overall 6% median discount is pulled down by
+  negotiated contracts without competition (0%). In COMPETITIVE procedures
+  the median discount is 10% (open) and 14% (simplified).
+
+  Known limitations: some buyers' discounts look odd (e.g. ~52% at one
+  national institute; probably unit-price contracts where the "budget" is a
+  ceiling). Certification requirements are detected only where the XML or a
+  checklist mentions them.
+
+----------------------------------------------------------------------
 8. SETUP NOTES & FIXES
 ----------------------------------------------------------------------
   - Supabase project in Ireland (eu-west-1): EU, OK for GDPR.
@@ -389,7 +438,7 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
   Excluded: .env (passwords), raw/ downloads, logs/, business .docx/.pdf,
   .claude/settings.local.json. data-pipeline/Summary(1).txt (Jyothika's
   saved copy of the explanation) is NOT committed; left on disk.
-  Not pushed yet: waiting for `gh auth login`.
+  Jyothika pushes to GitHub manually after each commit.
 
 ----------------------------------------------------------------------
 10. KNOWN GAPS
@@ -419,3 +468,6 @@ Real-time?       No. Daily at best. PLACSP itself refreshes its feed roughly
               citation support. placsp_fetch.py docs --ids. Started
               downloading June-August 2026 (August done).
   2026-10-02  Rebuilt with June–September 2026: 8,688 IT tenders loaded.
+  2026-10-02  Backend: companies, match_tenders fit score, buyer_stats,
+  (night)     upcoming_renewals, tender_decisions; API.md for frontend;
+              applied and verified on Supabase.
