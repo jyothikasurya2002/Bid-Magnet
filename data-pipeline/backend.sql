@@ -82,6 +82,138 @@ begin
 end $$;
 
 -- --------------------------------------------------------------------------
+-- 1b. Company details + company documents (requested by the frontend team).
+--     Profile page: legal data, ROLECE and classification status, and a private
+--     document vault (certificates, ROLECE, ENS, ISO, insurance...) with extraction.
+-- --------------------------------------------------------------------------
+alter table companies add column if not exists nif text;                       -- legal entity; links to past awards
+alter table companies add column if not exists website_url text;               -- source for website prefilling
+alter table companies add column if not exists rolece_status text not null default 'unknown';
+alter table companies add column if not exists rolece_last_verified_at timestamptz;
+alter table companies add column if not exists classification_status text not null default 'unknown';
+alter table companies add column if not exists classification_codes text[] not null default '{}';  -- e.g. {V-5-4, V-2-3}
+alter table companies add column if not exists updated_at timestamptz not null default now();
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'companies_rolece_status_check') then
+    alter table companies add constraint companies_rolece_status_check
+      check (rolece_status in ('unknown', 'applied', 'active', 'not_registered', 'needs_update'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'companies_classification_status_check') then
+    alter table companies add constraint companies_classification_status_check
+      check (classification_status in ('unknown', 'active', 'not_held', 'needs_update'));
+  end if;
+end $$;
+create index if not exists companies_nif on companies (nif);
+
+-- updated_at maintained by the database, so autosave conflict checks can trust it
+create or replace function set_updated_at() returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  return new;
+end $$;
+drop trigger if exists companies_updated_at on companies;
+create trigger companies_updated_at before update on companies
+  for each row execute function set_updated_at();
+
+create table if not exists company_documents (
+  id                uuid primary key default gen_random_uuid(),
+  company_id        uuid not null references companies(id) on delete cascade,
+  storage_path      text not null unique,          -- '<company_id>/<file>' in bucket company-documents
+  original_name     text not null,
+  mime_type         text,
+  byte_size         bigint check (byte_size is null or byte_size <= 20 * 1024 * 1024),
+  sha256            text,
+  document_type     text,                          -- ROLECE | ENS | ISO | CLASSIFICATION | INSURANCE | OTHER ...
+  processing_status text not null default 'uploaded'
+                    check (processing_status in ('uploaded', 'extracting', 'needs_review', 'ready', 'failed')),
+  extraction        jsonb check (extraction is null or jsonb_typeof(extraction) = 'object'),
+  reviewed_at       timestamptz,
+  reviewed_by       uuid,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  unique (company_id, sha256)                      -- same file uploaded twice for one company
+);
+create index if not exists company_documents_company on company_documents (company_id);
+drop trigger if exists company_documents_updated_at on company_documents;
+create trigger company_documents_updated_at before update on company_documents
+  for each row execute function set_updated_at();
+
+alter table company_documents enable row level security;
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'company_documents' and policyname = 'owner manages own company documents') then
+    create policy "owner manages own company documents" on company_documents for all to authenticated
+      using (exists (select 1 from companies c where c.id = company_id and c.owner = auth.uid()))
+      with check (exists (select 1 from companies c where c.id = company_id and c.owner = auth.uid()));
+  end if;
+end $$;
+
+-- Private bucket; files must live under '<company_id>/...' and only that company's owner can touch them
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('company-documents', 'company-documents', false, 20 * 1024 * 1024,
+        array['application/pdf', 'application/xml', 'text/xml', 'application/zip',
+              'application/x-zip-compressed', 'image/png', 'image/jpeg'])
+on conflict (id) do update set public = false, file_size_limit = excluded.file_size_limit,
+                               allowed_mime_types = excluded.allowed_mime_types;
+do $$
+declare op text;
+begin
+  foreach op in array array['select', 'insert', 'update', 'delete'] loop
+    if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects'
+                   and policyname = 'company documents ' || op) then
+      execute format(
+        'create policy %I on storage.objects for %s to authenticated %s',
+        'company documents ' || op, op,
+        case op
+          when 'insert' then 'with check (bucket_id = ''company-documents'' and (storage.foldername(name))[1] in (select id::text from public.companies where owner = auth.uid()))'
+          when 'update' then 'using (bucket_id = ''company-documents'' and (storage.foldername(name))[1] in (select id::text from public.companies where owner = auth.uid())) with check (bucket_id = ''company-documents'' and (storage.foldername(name))[1] in (select id::text from public.companies where owner = auth.uid()))'
+          else 'using (bucket_id = ''company-documents'' and (storage.foldername(name))[1] in (select id::text from public.companies where owner = auth.uid()))'
+        end);
+    end if;
+  end loop;
+end $$;
+
+-- Credentials proven by reviewed documents, mapped to the codes the fit score uses
+create or replace view company_credentials with (security_invoker = true) as
+select d.company_id, d.id as document_id, d.document_type,
+       case
+         when d.document_type = 'ENS' and upper(coalesce(d.extraction->>'credential_level', '')) ~ 'ALTA'  then 'ENS_ALTA'
+         when d.document_type = 'ENS' and upper(coalesce(d.extraction->>'credential_level', '')) ~ 'MEDIA' then 'ENS_MEDIA'
+         when d.document_type = 'ENS' then 'ENS_BASICA'
+         when d.document_type = 'ISO' and coalesce(d.extraction->>'credential_code', d.extraction->>'standard_edition', '') ~ '27001' then 'ISO27001'
+         when d.document_type = 'ISO' and coalesce(d.extraction->>'credential_code', d.extraction->>'standard_edition', '') ~ '9001'  then 'ISO9001'
+         when d.document_type = 'ISO' and coalesce(d.extraction->>'credential_code', d.extraction->>'standard_edition', '') ~ '14001' then 'ISO14001'
+       end as certification,
+       nullif(d.extraction->>'expiry_date', '')::date as expiry_date
+from company_documents d
+where d.processing_status = 'ready'
+  and (nullif(d.extraction->>'expiry_date', '') is null or (d.extraction->>'expiry_date')::date >= current_date);
+
+-- Expiry alerts for the vault: reviewed documents expiring in the next 90 days (or already expired)
+create or replace view company_document_alerts with (security_invoker = true) as
+select d.company_id, d.id as document_id, d.document_type, d.original_name,
+       (d.extraction->>'expiry_date')::date as expiry_date,
+       ((d.extraction->>'expiry_date')::date - current_date) as days_left
+from company_documents d
+where d.processing_status = 'ready'
+  and nullif(d.extraction->>'expiry_date', '') is not null
+  and (d.extraction->>'expiry_date')::date <= current_date + 90;
+
+-- Does a company classification satisfy a tender requirement? Tender codes look like 'V5-1'
+-- (group V, subgroup 5, minimum category 1; '*' = any subgroup). Company codes: 'V-5-4', 'V54'...
+create or replace function classification_covers(company_codes text[], required text)
+returns boolean language sql immutable as $$
+  select exists (
+    select 1 from unnest(company_codes) cc,
+      lateral (select regexp_replace(upper(cc), '[^A-Z0-9]', '', 'g') as c,
+                      regexp_replace(upper(required), '[^A-Z0-9*]', '', 'g') as r) n
+    where left(n.c, 1) = left(n.r, 1)                                         -- group
+      and (substr(n.r, 2, 1) = '*' or substr(n.c, 2, 1) = substr(n.r, 2, 1))   -- subgroup
+      and coalesce(nullif(regexp_replace(right(n.c, 1), '\D', '', 'g'), '')::int, 0)
+          >= coalesce(nullif(regexp_replace(right(n.r, 1), '\D', '', 'g'), '')::int, 0)  -- category
+  )
+$$;
+
+-- --------------------------------------------------------------------------
 -- 2. Buyer stats (Screen 3 "who you're up against"). Refreshed by load_supabase.py.
 -- --------------------------------------------------------------------------
 drop materialized view if exists buyer_stats;
@@ -172,11 +304,16 @@ set search_path = public, extensions as $$
 #variable_conflict use_column
 declare
   c companies%rowtype;
+  certs text[];        -- declared certifications + those proven by reviewed, unexpired documents
+  rolece_ok boolean;
 begin
   select * into c from companies where id = p_company;
   if not found then
     raise exception 'company % not found or not yours', p_company;
   end if;
+  select c.certifications || coalesce(array_agg(cc.certification) filter (where cc.certification is not null), '{}')
+    into certs from company_credentials cc where cc.company_id = c.id;
+  rolece_ok := c.rolece or c.rolece_status = 'active';
 
   return query
   with open_t as (
@@ -194,7 +331,8 @@ begin
                  coalesce((select string_agg(coalesce(el->>'requirement_en', '') || ' ' || coalesce(el->>'threshold', ''), ' ')
                            from tender_extractions e, jsonb_array_elements(e.output->'eligibility') el
                            where e.tender_id = t.id), '')) as req_text,
-           exists (select 1 from tender_requirements q where q.tender_id = t.id and q.kind = 'classification') as needs_class,
+           (select array_agg(q.code) from tender_requirements q
+             where q.tender_id = t.id and q.kind = 'classification' and q.code is not null)       as class_codes,
            -- meaning-based similarity between the tender title and the company profile (null if not embedded)
            (select 1 - (e.embedding <=> c.embedding) from tender_embeddings e where e.tender_id = t.id) as sim
     from tenders t
@@ -234,18 +372,31 @@ begin
                   'text','Turnover covers the usual solvency rule (1.5× annual value ≈ ' || round(1.5 * k.annual_value) || ' €)')
              else jsonb_build_object('type','gap','points',-15,
                   'text','Turnover may be below the usual solvency rule (1.5× annual value ≈ ' || round(1.5 * k.annual_value) || ' €)') end,
-        case when k.needs_iso27001 and not ('ISO27001' = any(c.certifications))
+        case when k.needs_iso27001 and not ('ISO27001' = any(certs))
                then jsonb_build_object('type','gap','points',-10,'text','Asks for ISO 27001 (you don''t have it)')
              when k.needs_iso27001 then jsonb_build_object('type','ok','points',5,'text','Asks for ISO 27001 (you have it)') end,
-        case when k.needs_iso9001 and not ('ISO9001' = any(c.certifications))
+        case when k.needs_iso9001 and not ('ISO9001' = any(certs))
                then jsonb_build_object('type','gap','points',-10,'text','Asks for ISO 9001 (you don''t have it)')
              when k.needs_iso9001 then jsonb_build_object('type','ok','points',5,'text','Asks for ISO 9001 (you have it)') end,
-        case when k.needs_ens and not (c.certifications && array['ENS_BASICA','ENS_MEDIA','ENS_ALTA'])
+        case when k.needs_ens and not (certs && array['ENS_BASICA','ENS_MEDIA','ENS_ALTA'])
                then jsonb_build_object('type','gap','points',-10,'text','Mentions ENS security certification (you don''t have it)')
              when k.needs_ens then jsonb_build_object('type','ok','points',5,'text','Mentions ENS (you have it; check the level)') end,
-        case when k.needs_class and not c.has_classification
-               then jsonb_build_object('type','gap','points',-10,'text','Requires business classification') end,
-        case when not c.rolece then jsonb_build_object('type','warn','points',0,
+        case when k.class_codes is null then null
+             when cardinality(c.classification_codes) > 0
+                  and exists (select 1 from unnest(k.class_codes) rc where classification_covers(c.classification_codes, rc))
+               then jsonb_build_object('type','ok','points',5,
+                    'text','Your classification covers what it asks (' || array_to_string(k.class_codes, ', ') || ')')
+             when c.has_classification or c.classification_status = 'active'
+               then jsonb_build_object('type','warn','points',0,
+                    'text','Asks for classification ' || array_to_string(k.class_codes, ', ') || ': check yours covers it')
+             else jsonb_build_object('type','gap','points',-10,
+                    'text','Requires business classification ' || array_to_string(k.class_codes, ', ')) end,
+        case when rolece_ok then null
+             when c.rolece_status = 'applied' then jsonb_build_object('type','warn','points',0,
+                  'text','ROLECE application pending: it must be active by the deadline')
+             when c.rolece_status = 'needs_update' then jsonb_build_object('type','warn','points',0,
+                  'text','Your ROLECE entry needs updating before you bid')
+             else jsonb_build_object('type','warn','points',0,
                   'text','Register in ROLECE: many tenders require it by the deadline') end,
         case when k.dleft >= 10 then jsonb_build_object('type','ok','points',10,'text', k.dleft || ' days to prepare')
              when k.dleft >= 5 then jsonb_build_object('type','warn','points',5,'text','Only ' || k.dleft || ' days left')

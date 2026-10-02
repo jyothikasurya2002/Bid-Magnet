@@ -69,7 +69,11 @@ technical notes).
 4. WHAT TO USE FOR EACH SCREEN (details + code in API.md)
 ---------------------------------------------------------
    Screen                     Use (read/call these)
-   1 Company profile          table  companies          (insert/select own rows)
+   1 Company profile          table  companies          (insert/select/update own rows;
+                                     nif, website, ROLECE + classification status)
+     Document vault           bucket company-documents  (private; files under <company_id>/)
+                              table  company_documents  (metadata + extraction JSON)
+                              views  company_credentials, company_document_alerts
    2 "Tenders for you" feed   rpc    match_tenders      (score 0-100 + reasons)
      Search box               rpc    search_tenders     (Spanish-aware)
    3 Tender page              tables tenders, tender_criteria,
@@ -96,9 +100,10 @@ technical notes).
 
 5. RULES – PLEASE DON'T CHANGE THE BACKEND
 ------------------------------------------
-   Frontend code may only READ the tender data, and write to only these
-   two tables through the app: companies, tender_decisions (and
-   nothing else). The security rules already enforce most of this.
+   Frontend code may only READ the tender data, and write only to:
+   companies, tender_decisions, company_documents and the
+   company-documents storage bucket (each user only their own
+   companies). The security rules already enforce this.
 
    Do NOT, without agreeing it in the team chat first:
    - edit, delete or add rows in the tender tables (tenders, tender_*,

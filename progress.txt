@@ -56,6 +56,10 @@ The company still submits on the official government platform itself.
   Competitor profiles (who wins what)    Built
   Renewal radar (contracts ending soon)  Built
   Search box (Spanish-aware)             Built
+  Company profile details + private      Built (frontend team's request): ROLECE
+  document vault (certificates)          and classification status, uploads,
+                                         expiry alerts; reviewed ENS/ISO
+                                         certificates count in the fit score
   Matching by meaning (AI, free model)   Built: finds tenders worded
                                          differently from the profile
   Similar past tenders (who won, price)  Built
@@ -189,6 +193,9 @@ The company still submits on the official government platform itself.
                           multilingual model) for matching by meaning
     companies             customer profiles (each user sees only their own)
     tender_decisions      Go / No-go / Watch per company and tender
+    company_documents     the company's own uploaded documents (ROLECE, ENS,
+                          ISO, insurance...) + extracted details; files in
+                          the private storage bucket "company-documents"
 
   8d. Backend features (SQL in backend.sql)
     match_tenders(company)  fit score 0-100 + reasons for every open tender
@@ -234,6 +241,12 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-02  Frontend team's request added: company fields (NIF, website,
+              ROLECE/classification status + codes, updated_at), private
+              document bucket + company_documents table (owner-only),
+              certificate/expiry views; fit score now uses ROLECE status,
+              real classification codes and reviewed certificates. Tested
+              (access rules, matching) and live.
   2026-10-02  Daily GitHub job is live; first successful run 20:19 CEST
               (+21 IT tenders, 686 open, all embedded).
   2026-10-02  Daily GitHub job failed: the DATABASE_URL secret had a trailing

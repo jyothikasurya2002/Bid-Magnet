@@ -48,6 +48,69 @@ const { data: companies } = await supabase.from('companies').select('*')
 - The profile's embedding is computed by the daily job (`embed.py`), so a brand-new profile gets meaning-based matching from the next day. Sector, keyword and region matching work immediately.
 - **Region names** must match these values: `Madrid`, `Comunitat Valenciana`, `Andalucía`, `Cataluña`, `País Vasco`, `Galicia`, `Canarias`, `Illes Balears`, `Castilla y León`, `Castilla-La Mancha`, `Aragón`, `Murcia`, `Asturias`, `Extremadura`, `Navarra`, `Cantabria`, `La Rioja`, `Ceuta`, `Melilla`, `Nacional`.
 
+### Company details (added for the profile page)
+
+| Field | Meaning |
+|---|---|
+| `nif` | Company tax ID. Use it to show the company's own past awards: `competitor_stats` / `bidder_history` by NIF |
+| `website_url` | Website, for prefilling the profile |
+| `rolece_status` | `unknown` \| `applied` \| `active` \| `not_registered` \| `needs_update`. Only `active` counts as registered in the fit score |
+| `rolece_last_verified_at` | When the ROLECE status was last checked |
+| `classification_status` | `unknown` \| `active` \| `not_held` \| `needs_update` |
+| `classification_codes` | e.g. `['V-5-4', 'V-2-3']`. Matched against tender requirements like `V5-1` (group V, subgroup 5, at least category 1) |
+| `updated_at` | Set by the database on every save. For autosave conflict checks, compare it before writing |
+
+The legacy flags `rolece` and `has_classification` still work, but prefer the status fields.
+
+### Company document vault (`company-documents` bucket + `company_documents` table)
+Private. Each user only sees their own companies' files.
+
+**Files must be stored under `<company_id>/`**, otherwise the upload is rejected. Limits: 20 MB; PDF, XML, ZIP, PNG or JPEG.
+
+```ts
+// upload
+const path = `${companyId}/${crypto.randomUUID()}-${file.name}`
+await supabase.storage.from('company-documents').upload(path, file, { contentType: file.type })
+await supabase.from('company_documents').insert({
+  company_id: companyId, storage_path: path, original_name: file.name,
+  mime_type: file.type, byte_size: file.size, sha256,   // sha256 of the file (duplicate detection)
+  document_type: 'ENS',  // ROLECE | ENS | ISO | CLASSIFICATION | INSURANCE | OTHER
+})
+
+// show / download (temporary link)
+const { data } = await supabase.storage.from('company-documents').createSignedUrl(path, 60)
+
+// list + expiry alerts (reviewed docs expiring within 90 days or already expired)
+const { data: docs } = await supabase.from('company_documents').select('*').eq('company_id', companyId)
+const { data: alerts } = await supabase.from('company_document_alerts').select('*').eq('company_id', companyId)
+```
+
+**`processing_status` flow:**
+
+| Status | Meaning |
+|---|---|
+| `uploaded` | File stored |
+| `extracting` | Extraction running |
+| `needs_review` | A person must check the extraction |
+| `ready` | Approved (set `reviewed_at` and `reviewed_by`) |
+| `failed` | Extraction failed |
+
+A `(company_id, sha256)` pair must be unique: the same file can't be uploaded twice.
+
+**`extraction` (jsonb), the contract:**
+- **Common fields:** `legal_entity_name`, `nif`, `credential_code`, `credential_level`, `standard_edition`, `certificate_number`, `issuer`, `accreditation_body`, `scope`, `covered_sites`, `issue_date` / `expiry_date` (`YYYY-MM-DD`), `source_page`, `source_quote`, `verified`, `warnings[]`.
+- **Type-specific extras** go in the same object:
+  - ROLECE: artifact type, status/date, classification codes, representatives
+  - ENS: level, declaration vs certification, covered systems, certifier, expiry
+  - ISO: standard + edition, entity/sites, scope, bodies, dates
+- **Privacy:** ROLECE "representatives/powers" contain people's names and roles, which is personal data under GDPR. Store only what the app needs (e.g. name + role), and nothing like ID numbers.
+
+**Documents feed the fit score automatically.** A document counts when it's `ready` and not expired:
+- `ENS` + `credential_level` (BÁSICA / MEDIA / ALTA) counts as that ENS level.
+- `ISO` + `credential_code` or `standard_edition` containing 27001 / 9001 / 14001 counts as that ISO.
+- A document without `expiry_date` counts as valid.
+- See the view `company_credentials`. Nothing else is needed: `match_tenders` uses these alongside `companies.certifications`.
+
 ## Screen 2: "Tenders for you" (`match_tenders`)
 ```ts
 const { data: matches } = await supabase.rpc('match_tenders', { p_company: companyId, p_limit: 50 })
