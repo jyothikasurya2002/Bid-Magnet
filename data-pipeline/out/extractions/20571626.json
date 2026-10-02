@@ -1,0 +1,382 @@
+{
+  "summary": {
+    "object_en": "Develop, deploy, operate and maintain an AI chatbot for the Canary Islands Government's future support platform against gender-based violence: conversation design, content, model training on approved material, controlled pilot, go-live on secure public cloud, corrective/evolutive maintenance and documentation.",
+    "object_es": "Desarrollo inicial de un chatbot basado en inteligencia artificial para la futura Plataforma inteligente de apoyo, formación y orientación contra la violencia de género de la Viceconsejería de Justicia y Seguridad, con despliegue en nube pública segura, mantenimiento y gestión de contenidos.",
+    "contract_type": "Servicios, procedimiento abierto simplificado sumario (art. 159.6 LCSP)",
+    "budget_no_tax": 50696.25,
+    "duration": "Until 31 Dec 2026 or until the budget is used up, whichever comes first",
+    "extensions": null,
+    "lots": [],
+    "submission": "Electronic only through PLACSP, single electronic file. Questions allowed until 4 days before the deadline; answers are binding."
+  },
+  "key_dates": [
+    {
+      "label": "Bid deadline (from PLACSP notice: 11 Oct 2026 23:59); pliego refers to the notice",
+      "date": "2026-10-11",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 16,
+      "quote": "Las proposiciones se presentarán en el plazo señalado en el anuncio de licitación",
+      "verified": true
+    },
+    {
+      "label": "Last day for clarification questions: 4 days before the deadline (~7 Oct 2026)",
+      "date": "2026-10-07",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 16,
+      "quote": "podrán solicitar información adicional hasta 4 días antes del cierre del plazo de licitación",
+      "verified": true
+    },
+    {
+      "label": "Best-ranked bidder must hand in documents within 7 business days of the request",
+      "date": null,
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 17,
+      "quote": "para que, dentro del plazo de SIETE (7) DÍAS HÁBILES, a contar desde el siguiente a aquel en que haya recibido el requerimiento",
+      "verified": true
+    },
+    {
+      "label": "Contract ends (no extensions)",
+      "date": "2026-12-31",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 8,
+      "quote": "El contrato tendrá un plazo máximo de vigencia de hasta el 31 de diciembre de 2026",
+      "verified": true
+    }
+  ],
+  "envelopes": [
+    {
+      "name": "Archivo electrónico único",
+      "contents": [
+        "Anexo I – Offer (price + scored commitments)",
+        "ROLECE (or Canary Islands contractor register) certificate",
+        "Anexo II – Commitment to assign the minimum team",
+        "Anexo IV – Personal data processing",
+        "Statement on subcontracting of servers / hosting",
+        "Evidence for scored criteria: cloud partner certification, ENS certificate, project manager experience declaration + client certificates",
+        "UTE commitment (only for joint bids)"
+      ],
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 16,
+      "quote": "Las proposiciones constaran de un único archivo electrónico.",
+      "verified": true
+    }
+  ],
+  "mandatory_documents": [
+    {
+      "name": "Anexo I – Oferta",
+      "description_en": "Offer following the Annex I model, with no errors or crossings-out; unclear offers are rejected.",
+      "envelope": "Archivo único",
+      "when": "with_bid",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 16,
+      "quote": "En dicho archivo se incluirá la oferta, redactada según modelo anexo I, al presente pliego",
+      "verified": true
+    },
+    {
+      "name": "ROLECE certificate",
+      "description_en": "Proof of registration in ROLECE (State) or the Canary Islands contractor register. This is how solvency is shown.",
+      "envelope": "Archivo único",
+      "when": "with_bid",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 16,
+      "quote": "Respecto de la solvencia deberán aportar el ROLECE.",
+      "verified": true
+    },
+    {
+      "name": "Anexos II and IV",
+      "description_en": "Annex II: commitment to assign the minimum 13-person team. Annex IV: personal data processing.",
+      "envelope": "Archivo único",
+      "when": "with_bid",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 17,
+      "quote": "Además deberán presentar cumplimentados los ANEXOS II y IV del presente pliego",
+      "verified": true
+    },
+    {
+      "name": "Server subcontracting statement",
+      "description_en": "Say whether servers/hosting will be subcontracted and name the subcontractor or its profile. Essential obligation.",
+      "envelope": "Archivo único",
+      "when": "with_bid",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 17,
+      "quote": "Los licitadores deberán indicar, si tienen previsto subcontratar los servidores o los servicios asociados a los mismos",
+      "verified": true
+    },
+    {
+      "name": "Data-protection solvency evidence",
+      "description_en": "ENS Basic declaration of conformity, or one or more of: DPO appointment, record of processing activities, data-subject rights protocols, data-breach protocol.",
+      "envelope": "Archivo único",
+      "when": "unclear",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 3,
+      "quote": "En sistemas de categoría básica — declaración de conformidad con el Esquema nacional de seguridad (ENS)",
+      "verified": true
+    },
+    {
+      "name": "Project manager experience declaration + client certificates",
+      "description_en": "Signed declaration by the proposed project manager listing projects and months of experience, plus a certificate from each client (person, project, dates, role, satisfactory performance). Remove career details from all other documents.",
+      "envelope": "Archivo único",
+      "when": "with_bid",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 14,
+      "quote": "Dicha declaración deberá acompañarse obligatoriamente del correspondiente certificado emitido por cada entidad contratante",
+      "verified": true
+    },
+    {
+      "name": "Company deeds / statutes",
+      "description_en": "Incorporation deed or statutes registered in the relevant public register (exempt if ROLECE certificate is provided).",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 18,
+      "quote": "Las personas jurídicas deberán presentar escritura o documento de constitución",
+      "verified": true
+    },
+    {
+      "name": "Power of attorney (bastanteo)",
+      "description_en": "If signing through a representative, proof of powers validated by the Canary Islands Government Legal Service.",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 18,
+      "quote": "Cuando la entidad propuesta actúe mediante representante, deberá aportarse documento fehaciente acreditativo",
+      "verified": true
+    },
+    {
+      "name": "No-prohibition-to-contract statement",
+      "description_en": "Proof of not being barred from public contracts (art. 71 LCSP); covered by the ROLECE certificate.",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 18,
+      "quote": "Documentación acreditativa de no concurrir causa de prohibición para contratar.",
+      "verified": true
+    },
+    {
+      "name": "Server location declaration",
+      "description_en": "Before signing: where servers will be and where related services are provided from. Essential obligation.",
+      "envelope": null,
+      "when": "awardee_only",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 19,
+      "quote": "la empresa adjudicataria deberá obligatoriamente presentar una declaración en la que se ponga de manifiesto dónde van a estar ubicados a los servidores",
+      "verified": true
+    }
+  ],
+  "eligibility": [
+    {
+      "category": "registry",
+      "requirement_en": "Must be registered in ROLECE or the Canary Islands contractor register by the bid deadline.",
+      "threshold": null,
+      "alternative": "EU/EEA companies can use their national official list of approved operators",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 3,
+      "quote": "solo podrán concurrir a la licitación de este contrato las empresas inscritas, en la fecha final de presentación de ofertas",
+      "verified": true
+    },
+    {
+      "category": "technical_solvency",
+      "requirement_en": "Show capacity to apply data-protection security measures: ENS Basic declaration, or DPO appointment / processing register / rights and breach protocols.",
+      "threshold": "ENS category Basic",
+      "alternative": "DPO appointment, record of processing activities, rights-exercise protocols, breach protocols",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 3,
+      "quote": "Cuando se vaya a realizar un tratamiento por cuenta de un responsable del tratamiento",
+      "verified": true
+    },
+    {
+      "category": "team",
+      "requirement_en": "Minimum team of 13: 1 project manager, 3 full-stack developers, 2 cloud experts, 3 AI experts, 4 content developers, each with a relevant degree and at least 3 years' experience in their field.",
+      "threshold": "13 people, ≥3 years each",
+      "alternative": null,
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 4,
+      "quote": "El equipo de trabajo destinado a la ejecución del contrato tiene que estar compuesto por",
+      "verified": true
+    },
+    {
+      "category": "experience",
+      "requirement_en": "Project manager: engineering degree (or degree + master), 5+ years in IT AND at least 3 years developing and deploying case-management systems for Gender Violence Courts (Juzgados de Violencia sobre la Mujer). Very few people in Spain meet this.",
+      "threshold": "3 years in gender-violence court case-management systems",
+      "alternative": null,
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 4,
+      "quote": "Experiencia mínima de 3 años en el desarrollo e implantación de sistemas de gestión procesal en Juzgados de Violencia sobre la Mujer.",
+      "verified": true
+    },
+    {
+      "category": "other",
+      "requirement_en": "The administration can demand replacement of any team member within 72 hours if found insufficient; replacements must have equivalent experience.",
+      "threshold": "72 h",
+      "alternative": null,
+      "doc": "ppt__PPTCHATBOTVictimas",
+      "page": 4,
+      "quote": "la Administración podrá requerir la sustitución del profesional en un plazo máximo de 72 horas",
+      "verified": true
+    },
+    {
+      "category": "other",
+      "requirement_en": "Deploy on secure public cloud with separate development, pre-production and production environments; comply with GDPR and ENS; encryption, data minimisation, anonymisation, access audit.",
+      "threshold": null,
+      "alternative": null,
+      "doc": "ppt__PPTCHATBOTVictimas",
+      "page": 6,
+      "quote": "El chatbot será desplegado sobre infraestructura en nube pública segura",
+      "verified": true
+    },
+    {
+      "category": "other",
+      "requirement_en": "Service levels: incidents resolved within 7 calendar days, 95% monthly compliance; phone support Mon–Fri 08:00–20:00 with 1-hour response.",
+      "threshold": "7 days / 95%",
+      "alternative": null,
+      "doc": "ppt__PPTCHATBOTVictimas",
+      "page": 12,
+      "quote": "Para el parámetro que nos ocupa se establece que el número de incidencias resueltas dentro de los tiempos establecidos",
+      "verified": true
+    }
+  ],
+  "award_criteria": [
+    {
+      "name": "1. Oferta económica",
+      "kind": "price",
+      "points": 60,
+      "how_scored_en": "Logarithmic: 60 × log(best offer) / log(your offer). Price differences barely change the score; discounts above 20% score 0.",
+      "envelope": "Archivo único",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 14,
+      "quote": "se ha establecido un sistema de valoración del precio basado en una fórmula logarítmica",
+      "verified": true
+    },
+    {
+      "name": "2. Experiencia del Jefe/a de Proyecto",
+      "kind": "automatic_formula",
+      "points": 15,
+      "how_scored_en": "1 sub-point per full month of the project manager's gender-violence court systems experience above 36 months (max 240 months); score = 15 × yours / best.",
+      "envelope": "Archivo único",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 13,
+      "quote": "Se otorgará la máxima puntuación (15 puntos) a aquella licitadora que acredite el mayor número de meses completos",
+      "verified": true
+    },
+    {
+      "name": "3. Certificaciones con proveedores de nube",
+      "kind": "automatic_formula",
+      "points": 10,
+      "how_scored_en": "10 points for one of: AWS Premier Tier with Generative AI Competency, Google Premier Partner with AI & Data badge, Microsoft Solutions Partner for Microsoft Cloud, Oracle Generative AI expertise, IBM Premier with Generative AI; or equivalent. Otherwise 0.",
+      "envelope": "Archivo único",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 11,
+      "quote": "El licitador deberá acreditar la certificación requerida aportando",
+      "verified": true
+    },
+    {
+      "name": "4. Esquema Nacional de Seguridad",
+      "kind": "automatic_formula",
+      "points": 10,
+      "how_scored_en": "ENS Basic = 0, Medium = 5, High = 10, proven by an accredited certificate or verifiable declaration.",
+      "envelope": "Archivo único",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 12,
+      "quote": "El licitador deberá acreditar el cumplimiento del ENS mediante",
+      "verified": true
+    },
+    {
+      "name": "5. Compromiso de presencialidad",
+      "kind": "automatic_formula",
+      "points": 5,
+      "how_scored_en": "Project manager on site in Santa Cruz de Tenerife or Las Palmas: 2 days/week = 2 points; 5 days/week + on-site within 2 business hours on urgent request = 5 points; only the PPT minimum = 0.",
+      "envelope": "Archivo único",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 10,
+      "quote": "se valorará el compromiso de presencialidad asumido por el licitador",
+      "verified": true
+    }
+  ],
+  "price": {
+    "formula": "P = 60 x (log (mo))/(log(O)); mo = best (lowest) offer, O = offer being scored, log base 10. Max discount 20%.",
+    "formula_explained_en": "Logarithmic formula that compresses price differences: at this budget, even the best allowed discount (20%) only beats a full-price bid by about 1.2 points out of 60. The contract is decided by the 40 quality points, especially the project manager's experience (15) and cloud/ENS certifications (20). Any discount above 20% scores 0 on price.",
+    "abnormally_low_rule": "Presumed abnormally low if more than 20% below the base budget; bidder gets 5 business days to justify. Offers breaching subcontracting, environmental, social or labour rules are rejected.",
+    "provisional_guarantee": null,
+    "definitive_guarantee": null,
+    "doc": "pcap__PCAPCHATBOTVictimas",
+    "page": 14,
+    "quote": "Fórmula de puntuación del precio",
+    "verified": true
+  },
+  "exclusion_risks": [
+    {
+      "risk_en": "Not registered in ROLECE or the Canary Islands register by the deadline: you cannot bid at all.",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 3,
+      "quote": "en el Registro Oficial de Licitadores y Empresas Clasificadas del Sector Público o en el Registro de Contratistas de la Comunidad Autónoma de Canarias",
+      "verified": true
+    },
+    {
+      "risk_en": "Offer with errors or crossings-out that make it unclear is rejected.",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 16,
+      "quote": "sin errores o tachaduras que dificulten conocer claramente lo que el órgano de contratación estime fundamental",
+      "verified": true
+    },
+    {
+      "risk_en": "Discount above 20% scores 0 on price and is presumed abnormally low.",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 15,
+      "quote": "Adicionalmente, se fija un límite máximo de baja del 20%.",
+      "verified": true
+    },
+    {
+      "risk_en": "Missing or incomplete evidence for a scored criterion means 0 points for that criterion (not exclusion).",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 15,
+      "quote": "Si algún licitador no aportara la documentación relativa a alguno de los criterios de valoración",
+      "verified": true
+    },
+    {
+      "risk_en": "Submitting more than one bid, or alone and in a UTE, voids all your bids. No variants allowed.",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 16,
+      "quote": "El incumplimiento, por algún sujeto licitador, de las prohibiciones establecidas en los apartados anteriores",
+      "verified": true
+    },
+    {
+      "risk_en": "Bids not submitted electronically through PLACSP are not accepted.",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 15,
+      "quote": "No se admitirán las ofertas que no sean presentadas de esta manera.",
+      "verified": true
+    },
+    {
+      "risk_en": "Failing to deliver the awardee documents within 7 business days counts as withdrawing the offer, with a 3% penalty on the base budget.",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 17,
+      "quote": "se entenderá que la licitadora ha retirado su oferta y se le impondrá una penalidad económica",
+      "verified": true
+    },
+    {
+      "risk_en": "Mentioning the project manager's career in any document other than the experience declaration may breach the rules for the experience criterion.",
+      "doc": "pcap__PCAPCHATBOTVictimas",
+      "page": 13,
+      "quote": "deberá suprimirse cualquier mención relativa a la trayectoria profesional del personal",
+      "verified": true
+    }
+  ],
+  "review_notes": [
+    "HIGH RISK / LIKELY INCUMBENT: the minimum project-manager requirement (3 years building case-management systems for Gender Violence Courts, p.4) is also the biggest quality criterion (15 pts, p.13). Very few firms have this; it most likely favours the current supplier of Canary Islands justice systems. Check past awards for this buyer before investing in the bid.",
+    "TIGHT ECONOMICS: 13 people, 1,398 estimated hours, 50,696.25 € excl. IGIC (p.6), ending 31 Dec 2026 (p.8). If awarded in late October, that leaves about 2 months to build, pilot and go live.",
+    "PRICE BARELY MATTERS: log formula + 20% cap (p.14–15) means the price spread is ~1.2 points out of 60. Bid close to budget and compete on certifications, ENS level and the project manager's experience.",
+    "UNEVEN CLOUD CRITERION: 'Microsoft Solutions Partner for Microsoft Cloud' is much easier to obtain than AWS Premier Tier with Generative AI Competency, yet both earn the same 10 points (p.9, p.11).",
+    "INCONSISTENCIES (boilerplate): clause 5.1 says the budget 'includes IGIC' and 'taxes NOT included' in the same sentence (p.5); clause 13.4 mentions lots although the contract has none (p.1, p.16); the data-processing annex is called both Annex IV and Annex VI (p.21); clause 17.6 refers to 'cláusula 24' (p.20); penalties mention forfeiting a guarantee, but no guarantee is defined.",
+    "Prices are in IGIC (Canary Islands tax, 7%), not VAT."
+  ],
+  "_meta": {
+    "tender_id": "20571626",
+    "documents": [
+      "pcap__PCAPCHATBOTVictimas.pdf",
+      "ppt__PPTCHATBOTVictimas.pdf"
+    ],
+    "pages": 57,
+    "citations": 36,
+    "citations_verified": 36
+  }
+}

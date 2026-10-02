@@ -3,6 +3,7 @@
     python placsp_fetch.py month 202609            # monthly zip -> raw/placsp_202609.zip
     python placsp_fetch.py live --pages 3          # newest pages of the live feed -> raw/live/
     python placsp_fetch.py docs --open-only        # PCAP/PPT PDFs for IT tenders in out/ -> raw/docs/
+    python placsp_fetch.py docs --ids 20571626     # just these tenders
 
 PLACSP serves a certificate chained to the Spanish FNMT root, which most CA
 stores (macOS, Ubuntu runners) don't trust. We add certs/fnmt_chain.pem on top
@@ -74,9 +75,11 @@ def fetch_live(pages: int) -> list[Path]:
     return out
 
 
-def fetch_docs(open_only: bool, limit: int, kinds: set[str]) -> None:
+def fetch_docs(open_only: bool, limit: int, kinds: set[str], ids: set[str] | None = None) -> None:
     tenders = {r["id"]: r for r in csv.DictReader((ROOT / "out" / "tenders.csv").open(encoding="utf-8-sig"))}
     today = date.today().isoformat()
+    if ids:
+        tenders = {k: t for k, t in tenders.items() if k in ids}
     if open_only:
         tenders = {k: t for k, t in tenders.items() if t["status"] == "PUB" and t["deadline_date"] >= today}
     docs = [d for d in csv.DictReader((ROOT / "out" / "documents.csv").open(encoding="utf-8-sig"))
@@ -105,6 +108,7 @@ def main() -> None:
     dc.add_argument("--open-only", action="store_true", help="only tenders still accepting bids")
     dc.add_argument("--limit", type=int, default=200)
     dc.add_argument("--kinds", default="pcap,ppt", help="pcap,ppt,additional,general,notice")
+    dc.add_argument("--ids", help="comma list of tender ids (default: all)")
     args = ap.parse_args()
 
     if args.cmd == "month":
@@ -113,7 +117,8 @@ def main() -> None:
     elif args.cmd == "live":
         fetch_live(args.pages)
     else:
-        fetch_docs(args.open_only, args.limit, set(args.kinds.split(",")))
+        fetch_docs(args.open_only, args.limit, set(args.kinds.split(",")),
+                   set(args.ids.split(",")) if args.ids else None)
 
 
 if __name__ == "__main__":

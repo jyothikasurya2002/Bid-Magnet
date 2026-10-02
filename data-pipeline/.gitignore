@@ -4,3 +4,4 @@ out/*
 !out/extractions/
 __pycache__/
 *.part
+logs/

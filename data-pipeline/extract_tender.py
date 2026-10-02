@@ -136,15 +136,31 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", s).strip()
 
 
-def verify(item: dict, pdfs: dict[str, fitz.Document]) -> None:
+XML_DOC = "placsp_xml"  # cite the PLACSP structured record when a fact is only there (e.g. tables drawn as images)
+
+
+def xml_record_text(tender_id: str) -> str:
+    """Normalised text of the tender's parsed PLACSP record, for verifying XML_DOC citations."""
+    path = ROOT / "out" / "tenders.jsonl"
+    if path.exists():
+        for line in path.open(encoding="utf-8"):
+            if f'"id": "{tender_id}"' in line[:200]:
+                return _norm(line)
+    return ""
+
+
+def verify(item: dict, pdfs: dict[str, fitz.Document], xml_text: str = "") -> None:
     """Mark item['verified'] = True if its quote appears on the cited page (±1 page)."""
-    doc = pdfs.get(item.get("doc", ""))
     quote = _norm(item.get("quote") or "")
+    words = quote.split()
+    probe = " ".join(words[:8])  # first ~8 words survive line breaks/hyphenation well enough
+    if item.get("doc") == XML_DOC:
+        item["verified"] = bool(probe) and probe in xml_text
+        return
+    doc = pdfs.get(item.get("doc", ""))
     item["verified"] = False
     if doc is None or not quote:
         return
-    words = quote.split()
-    probe = " ".join(words[:8])  # first ~8 words survive line breaks/hyphenation well enough
     page = item.get("page") or 0
     for p in (page, page - 1, page + 1):
         if 1 <= p <= doc.page_count and probe in _norm(doc[p - 1].get_text()):
@@ -173,8 +189,9 @@ def verify_existing(tender_id: str) -> None:
     data = json.loads(dest.read_text(encoding="utf-8"))
     pdfs = {p.stem: fitz.open(p) for p in sorted((DOCS / tender_id).glob("*.pdf"))}
     cited = list(walk_cited({k: v for k, v in data.items() if k != "_meta"}))
+    xml_text = xml_record_text(tender_id)
     for item in cited:
-        verify(item, pdfs)
+        verify(item, pdfs, xml_text)
     bad = [i for i in cited if not i["verified"]]
     meta = data.setdefault("_meta", {})
     meta.update({"tender_id": tender_id, "documents": [f"{k}.pdf" for k in pdfs],
@@ -226,8 +243,9 @@ def extract(tender_id: str, client) -> dict:
     data = json.loads(text)
 
     cited = list(walk_cited(data))
+    xml_text = xml_record_text(tender_id)
     for item in cited:
-        verify(item, pdfs)
+        verify(item, pdfs, xml_text)
     ok = sum(i["verified"] for i in cited)
 
     u = msg.usage
