@@ -43,7 +43,8 @@ def vec(v) -> str:
 
 def main() -> None:
     load_env()
-    url = os.environ.get("DATABASE_URL") or sys.exit("Set DATABASE_URL")
+    # strip(): a secret pasted into GitHub often carries a trailing newline
+    url = (os.environ.get("DATABASE_URL") or "").strip() or sys.exit("Set DATABASE_URL")
     model = TextEmbedding(MODEL)
     with psycopg.connect(url) as conn, conn.cursor() as cur:
         cur.execute(f"""select t.id, {TENDER_TEXT}, md5({TENDER_TEXT}) from tenders t

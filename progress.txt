@@ -235,6 +235,8 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-02  Daily GitHub job failed: the DATABASE_URL secret had a trailing
+              line break. Scripts now ignore surrounding spaces/newlines.
   2026-10-02  Regional platforms added (+6,925 IT tenders); matching by
               meaning (free multilingual AI model, pgvector); similar past
               tenders; bid results for 7 more tenders (9 total, 115 bids,

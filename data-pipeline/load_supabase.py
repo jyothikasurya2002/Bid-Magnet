@@ -68,7 +68,8 @@ def main() -> None:
             if "=" in line and not line.lstrip().startswith("#"):
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-    url = os.environ.get("DATABASE_URL")
+    # strip(): a secret pasted into GitHub often carries a trailing newline
+    url = (os.environ.get("DATABASE_URL") or "").strip()
     if not url:
         sys.exit("Set DATABASE_URL (Supabase → Connect → Session pooler).")
     tenders = [json.loads(l) for l in (ROOT / "out" / "tenders.jsonl").open(encoding="utf-8")]
