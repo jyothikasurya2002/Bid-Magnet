@@ -1,0 +1,168 @@
+BIDMAGNET – BACKEND STACK (read this before building or exploring)
+=================================================================
+Owner: Jyothika (data & backend)          Last updated: 2026-10-02
+Questions or change requests -> Jyothika. Please don't change the backend
+yourselves (see section 5): it runs live every day and other screens
+depend on it.
+
+Related files: data-pipeline/API.md (copy-paste code for every screen),
+progress.txt (what's done, in plain words), implementation.txt (deep
+technical notes).
+
+
+1. THE STACK IN ONE PICTURE
+---------------------------
+
+   Government tender platform (PLACSP: national + regional feeds)
+            |   every morning 07:30 Spain time (GitHub Actions)
+            v
+   Python pipeline (data-pipeline/)  -->  Supabase (Postgres, EU / Ireland)
+   download -> clean -> keep IT ->         tables + ready-made functions
+   load -> AI fingerprints                       |
+                                                 v
+                                     Next.js frontend (Vercel)  <-- YOU
+                                     talks to Supabase directly with
+                                     supabase-js. There is NO separate
+                                     API server to build or call.
+
+   Pieces: Supabase (database, login, security rules), Python 3.12,
+   GitHub Actions (daily job), pgvector + a free multilingual AI model
+   (matching by meaning; no paid API).
+
+
+2. WHAT'S IN THE DATABASE (live today)
+--------------------------------------
+   - 23,000+ IT tenders, Jan–Sep 2026, Spain-wide (national platform plus
+     Catalonia, Basque Country, Navarre, Madrid, Andalucía, Galicia...).
+     ~690 are open for bids right now. New ones arrive every morning.
+   - For each tender: buyer, budget, deadline, region, sector codes,
+     scoring criteria, requirements, links to every official PDF, and
+     (when awarded) the winner, number of bids, lowest/highest bid.
+   - Buyer profiles (2,000+ buyers) and competitor profiles (5,000+
+     winning companies).
+   - Full bid results (EVERY bidder's price, score, rank, exclusion
+     reason) for 9 tenders / 115 bids, all checked against the PDFs.
+   - Cited bid checklists (every requirement points to a PDF page) for 3
+     demo tenders: 20602902 (cemetery software), 20571626 (AI chatbot),
+     20586307 (OT cybersecurity, 3 lots).
+   - A demo company profile for the showcase:
+       "Soluciones Marta S.L. (demo)"  id 00000000-0000-0000-0000-000000000001
+
+
+3. HOW TO CONNECT (frontend)
+----------------------------
+   In the Next.js app, .env.local (ask Jyothika for the two values):
+     NEXT_PUBLIC_SUPABASE_URL=...        (Supabase -> Project Settings -> API)
+     NEXT_PUBLIC_SUPABASE_ANON_KEY=...   (same page; safe to use in the browser)
+
+   import { createClient } from '@supabase/supabase-js'
+   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                                 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
+   Users must be LOGGED IN (Supabase Auth, email login). Logged-out
+   requests return empty results on purpose. For the demo, create one
+   shared test account.
+
+   NEVER put the database password, the "service_role" key or
+   data-pipeline/.env in the frontend, in Slack/WhatsApp or in git.
+
+
+4. WHAT TO USE FOR EACH SCREEN (details + code in API.md)
+---------------------------------------------------------
+   Screen                     Use (read/call these)
+   1 Company profile          table  companies          (insert/select own rows)
+   2 "Tenders for you" feed   rpc    match_tenders      (score 0-100 + reasons)
+     Search box               rpc    search_tenders     (Spanish-aware)
+   3 Tender page              tables tenders, tender_criteria,
+                                     tender_requirements, tender_documents
+     Who you're up against    view   buyer_stats        (by buyer_nif)
+                              view   competitor_stats   (by nif)
+                              rpc    similar_tenders    (past winners, discounts)
+                              tables tender_bids, tender_bid_reports,
+                                     view bidder_history (full bid results)
+     Go / No-go / Watch       table  tender_decisions   (upsert)
+   4 Bid checklist            table  tender_extractions (JSON with page refs)
+   5 Price simulator          no backend call: use the checklist's price
+                              formula + buyer_stats.median_discount
+   Renewal radar              view   upcoming_renewals  (contracts ending soon)
+
+   Tips:
+   - reasons[] items are {type: ok|warn|gap, points, text}: show green/
+     amber/red.
+   - Checklist items have {doc, page, quote, verified}: link to the PDF
+     url (from tender_documents) + "#page=N"; show a "check" badge when
+     verified is false.
+   - Region names, field meanings, example queries: API.md.
+
+
+5. RULES – PLEASE DON'T CHANGE THE BACKEND
+------------------------------------------
+   Frontend code may only READ the tender data, and write to these
+   three tables through the app: companies, tender_decisions (and
+   nothing else). The security rules already enforce most of this.
+
+   Do NOT, without asking Jyothika:
+   - edit, delete or add rows in the tender tables (tenders, tender_*,
+     buyer/competitor stats) – the daily job owns them and would
+     overwrite or conflict with your changes;
+   - run schema.sql / backend.sql or any CREATE / ALTER / DROP / DELETE /
+     UPDATE / TRUNCATE in the Supabase SQL editor;
+   - rename tables or columns, or change functions (match_tenders etc.):
+     the API.md contract would break for every screen;
+   - change Supabase Auth, security (RLS) policies, API keys or the
+     database password;
+   - edit .github/workflows/daily-ingest.yml or the GitHub secret
+     DATABASE_URL (the daily update would stop);
+   - commit .env files or keys.
+
+   Need a new field, filter or function? Ask Jyothika – it's usually a
+   small addition to backend.sql and gets added for everyone.
+
+
+6. HOW TO EXPLORE SAFELY (you're welcome to look around!)
+---------------------------------------------------------
+   Look, don't touch:
+   - Supabase dashboard -> Table Editor: browse any table (just don't
+     edit cells or delete rows).
+   - Supabase dashboard -> SQL Editor: SELECT queries only. Examples:
+       select title, buyer_name, budget_no_tax, deadline_date
+         from tenders where status = 'PUB' order by deadline_date limit 20;
+       select * from match_tenders('00000000-0000-0000-0000-000000000001') limit 10;
+       select * from similar_tenders('20602902');
+       select * from bidder_history order by bids desc limit 10;
+       select * from competitor_stats order by awards desc limit 20;
+   - Read the code: data-pipeline/README.md, then the .py files and
+     backend.sql. Everything is commented.
+   - Data files: data-pipeline/out/extractions/*.json (checklists) and
+     out/bids/*.json (full bid results) are plain JSON you can open.
+
+   Want to experiment (change SQL, try ideas)?
+   - Create your OWN free Supabase project and run schema.sql then
+     backend.sql there, or use a local Postgres (Docker image
+     pgvector/pgvector:pg16). Load data with
+       DATABASE_URL=<your own db> python load_supabase.py
+     (after building out/ – see README.md). Break it as much as you like.
+   - Never point experiments at the team's Supabase project.
+
+
+7. DAILY UPDATE (automatic)
+---------------------------
+   - Runs every day 05:30 UTC (07:30 Spain) in GitHub Actions:
+     fetch new tenders (national + regional) -> parse -> load -> refresh
+     stats -> AI fingerprints for new tenders/company profiles.
+   - Takes a few minutes. New company profiles get "matching by meaning"
+     from the next morning; everything else works immediately.
+   - If a run fails, GitHub emails the repo owner; tell Jyothika.
+
+
+8. KNOWN LIMITS (so nobody is surprised in the demo)
+----------------------------------------------------
+   - Data starts January 2026.
+   - Checklists exist for 3 tenders and full bid results for 9; others
+     show the structured data only (criteria, requirements, winner).
+   - Regional tenders carry fewer document links than national ones.
+   - PDFs are linked from the government site (slow sometimes); they are
+     not stored in Supabase.
+   - Certificate requirements in the fit score are only detected when the
+     tender data or a checklist mentions them.
+   - Free tier: 500 MB database, ~175 MB used.

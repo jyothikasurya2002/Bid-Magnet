@@ -1,6 +1,7 @@
 BIDMAGNET – PROGRESS
 ====================
 Data & backend owner: Jyothika        Last updated: 2026-10-02
+(For the team building the app: BACKEND_STACK.txt)
 (Technical details for developers/AI: implementation.txt)
 
 
