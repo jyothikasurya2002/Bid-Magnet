@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { computeGaps, type Gap, type GapAction } from "@/lib/gaps";
 import { createClient } from "@/lib/supabase/client";
 import type { CompanyProfile, MatchReason } from "@/lib/types";
@@ -16,11 +16,14 @@ type State =
   | { kind: "error"; message: string }
   | { kind: "ready"; gaps: Gap[]; affected: number; total: number };
 
-const VISIBLE = 5;
+const MORE_VISIBLE = 4;
 
+// Right panel: the one fix that frees the most open tenders, then the rest.
 export function GapRail({ company, revision, onAction }: GapRailProps) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [showAll, setShowAll] = useState(false);
+  const [fixed, setFixed] = useState<Gap | null>(null);
+  const previous = useRef<Gap[] | null>(null);
   const companyId = company.id;
 
   useEffect(() => {
@@ -36,8 +39,15 @@ export function GapRail({ company, revision, onAction }: GapRailProps) {
           setState({ kind: "error", message: error.message });
           return;
         }
-        const rows = ((data as Array<{ tender_id: string; reasons: MatchReason[] }>) || []);
-        setState({ kind: "ready", ...computeGaps(rows, company) });
+        const rows = (data as Array<{ tender_id: string; reasons: MatchReason[] }>) || [];
+        const next = computeGaps(rows, company);
+        // A gap that disappeared after an edit is one the user just fixed.
+        const solved = previous.current?.find(
+          (gap) => !next.gaps.some((current) => current.key === gap.key),
+        );
+        setFixed(solved ?? null);
+        previous.current = next.gaps;
+        setState({ kind: "ready", ...next });
       });
 
     return () => {
@@ -48,18 +58,26 @@ export function GapRail({ company, revision, onAction }: GapRailProps) {
   }, [companyId, revision]);
 
   const gaps = state.kind === "ready" ? state.gaps : [];
-  const visible = showAll ? gaps : gaps.slice(0, VISIBLE);
+  const [best, ...rest] = gaps;
+  const more = showAll ? rest : rest.slice(0, MORE_VISIBLE);
 
   return (
     <aside className="gap-rail" aria-labelledby="gap-rail-title">
       <div className="gap-rail-head">
-        <h2 id="gap-rail-title">Costing you matches</h2>
+        <h2 id="gap-rail-title">Your next best fix</h2>
         <p>
           {state.kind === "ready" && state.total
-            ? `${state.affected} of the ${state.total} open tenders that match your services are held back by something here.`
-            : "Open tenders that match your services, and what in your profile holds them back."}
+            ? `${state.total} open tenders match your services. ${state.affected} are held back by something in your profile.`
+            : "What in your profile holds back the open tenders that match you."}
         </p>
       </div>
+
+      {fixed ? (
+        <p className="gap-fixed" role="status">
+          <span aria-hidden="true">✓</span> {fixed.title} sorted. {fixed.count} tender
+          {fixed.count === 1 ? "" : "s"} no longer held back by it.
+        </p>
+      ) : null}
 
       {state.kind === "loading" ? (
         <p className="gap-rail-note" role="status">
@@ -75,40 +93,55 @@ export function GapRail({ company, revision, onAction }: GapRailProps) {
 
       {state.kind === "ready" && !state.total ? (
         <p className="gap-rail-note">
-          No open tenders match yet. Add sector codes, keywords or a description under
-          What you do.
+          No open tenders match yet. Describe what you do and add sector codes or keywords
+          to start matching.
         </p>
       ) : null}
 
-      {state.kind === "ready" && state.total && !gaps.length ? (
+      {state.kind === "ready" && state.total && !best ? (
         <p className="gap-rail-note">
           Nothing in your profile is holding back your {state.total} matching open tenders.
         </p>
       ) : null}
 
-      {visible.map((gap) => (
-        <div className="gap" key={gap.key}>
-          <span className="gap-count">{gap.count}</span>
-          <div className="gap-body">
-            <strong>{gap.title}</strong>
-            <span>{gap.detail}</span>
-            <div>
-              <button
-                type="button"
-                className="button button-dark button-small"
-                onClick={() => onAction(gap.action)}
-              >
-                {gap.action.label}
-              </button>
-            </div>
-          </div>
+      {best ? (
+        <div className="best-fix">
+          <span className="best-fix-count">{best.count}</span>
+          <span className="best-fix-unit">
+            open tender{best.count === 1 ? "" : "s"} held back
+          </span>
+          <strong>{best.title}</strong>
+          <p>{best.detail}</p>
+          <button
+            type="button"
+            className="button button-dark button-full"
+            onClick={() => onAction(best.action)}
+          >
+            {best.action.label}
+          </button>
         </div>
-      ))}
+      ) : null}
 
-      {gaps.length > VISIBLE ? (
-        <button type="button" className="link-button gap-more" onClick={() => setShowAll(!showAll)}>
-          {showAll ? "Show fewer" : `Show ${gaps.length - VISIBLE} more`}
-        </button>
+      {more.length ? (
+        <div className="more-fixes">
+          <h3>Then</h3>
+          <ul>
+            {more.map((gap) => (
+              <li key={gap.key}>
+                <span className="more-fix-count">{gap.count}</span>
+                <span className="more-fix-title">{gap.title}</span>
+                <button type="button" className="link-button link-strong" onClick={() => onAction(gap.action)}>
+                  {gap.action.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {rest.length > MORE_VISIBLE ? (
+            <button type="button" className="link-button" onClick={() => setShowAll(!showAll)}>
+              {showAll ? "Show fewer" : `Show ${rest.length - MORE_VISIBLE} more`}
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       <p className="gap-rail-footnote">

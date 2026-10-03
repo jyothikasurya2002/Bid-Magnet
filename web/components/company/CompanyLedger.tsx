@@ -39,6 +39,7 @@ import {
 } from "./editors";
 import { DocChip, FactRow, LedgerTable, type Status } from "./FactRow";
 import { GapRail } from "./GapRail";
+import { RowUpload } from "./RowUpload";
 import { useCompanyDocuments } from "./useCompanyDocuments";
 import { WebsiteImport } from "./WebsiteImport";
 
@@ -117,6 +118,12 @@ export function CompanyLedger({
     importOnLoad && initialCompany.website_url ? initialCompany.website_url : null,
   );
   const fileInput = useRef<HTMLInputElement>(null);
+  // row the file picker was opened from; undefined = general upload
+  const pickTarget = useRef<ProofKey | undefined>(undefined);
+  const [drag, setDrag] = useState<{ active: boolean; target: ProofKey | null }>({
+    active: false,
+    target: null,
+  });
 
   useEffect(() => {
     companyRef.current = company;
@@ -172,6 +179,65 @@ export function CompanyLedger({
     onConfirmed: applyExtraction,
   });
 
+  function pickFiles(target?: ProofKey) {
+    pickTarget.current = target;
+    fileInput.current?.click();
+  }
+
+  // Files can be dropped anywhere: on a proof row they become that row's proof,
+  // elsewhere they go to Documents.
+  const uploadRef = useRef(docs.upload);
+  useEffect(() => {
+    uploadRef.current = docs.upload;
+  });
+  useEffect(() => {
+    // dragenter/dragleave fire for every child element; count them to know when the drag leaves the window
+    let depth = 0;
+    const hasFiles = (event: DragEvent) => event.dataTransfer?.types.includes("Files") ?? false;
+    const rowKey = (event: DragEvent) =>
+      ((event.target as Element | null)?.closest?.("[data-proof-key]")?.getAttribute("data-proof-key") ??
+        null) as ProofKey | null;
+
+    const onEnter = (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      depth += 1;
+      setDrag({ active: true, target: rowKey(event) });
+    };
+    const onOver = (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      const target = rowKey(event);
+      setDrag((current) => (current.active && current.target === target ? current : { active: true, target }));
+    };
+    const onLeave = (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) setDrag({ active: false, target: null });
+    };
+    const onDrop = (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      event.preventDefault();
+      depth = 0;
+      const target = rowKey(event);
+      setDrag({ active: false, target: null });
+      if (event.dataTransfer?.files.length) {
+        uploadRef.current(event.dataTransfer.files, target ?? undefined);
+        if (!target) document.getElementById("documents")?.scrollIntoView({ behavior: "smooth" });
+      }
+    };
+
+    window.addEventListener("dragenter", onEnter);
+    window.addEventListener("dragover", onOver);
+    window.addEventListener("dragleave", onLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onEnter);
+      window.removeEventListener("dragover", onOver);
+      window.removeEventListener("dragleave", onLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, []);
+
   function focusFact(id: string) {
     setEditing(id);
     window.requestAnimationFrame(() =>
@@ -198,14 +264,49 @@ export function CompanyLedger({
   const isEditing = (id: string) => editing === id;
 
   const proof = (key: ProofKey) => proofFor(key, docs.documents);
-  const proofCell = (document: CompanyDocument | undefined, attachable: boolean) =>
+  // Proof cell: the confirmed document, or an upload button (orange when the fact is claimed without proof).
+  const proofCell = (key: ProofKey, document: CompanyDocument | undefined, claimed: boolean, label: string) =>
     document ? (
       <DocChip document={document} onOpen={() => void docs.open(document)} />
-    ) : attachable ? (
-      <button type="button" className="attach-button" onClick={() => fileInput.current?.click()}>
-        + Attach
+    ) : (
+      <button
+        type="button"
+        className={claimed ? "attach-button" : "attach-button attach-button-quiet"}
+        onClick={() => pickFiles(key)}
+      >
+        + Upload<span className="sr-only"> {label} certificate</span>
       </button>
-    ) : undefined;
+    );
+
+  // Drop target plus the in-row upload progress and review for a proof row.
+  const proofRow = (key: ProofKey, label: string) => {
+    const pending = docs.uploads.find((item) => item.target === key);
+    const document = docs.documents.find(
+      (item) => docs.targets[item.id] === key && item.processing_status !== "ready",
+    );
+    return {
+      proofKey: key,
+      dropActive: drag.active && drag.target === key,
+      below:
+        pending || document ? (
+          <RowUpload
+            proofKey={key}
+            label={label}
+            upload={pending}
+            document={pending ? undefined : document}
+            error={document ? docs.errors[document.id] : undefined}
+            companyNif={company.nif}
+            onConfirm={(item) => void docs.confirm(item)}
+            onReject={(item) => void docs.reject(item)}
+            onRetry={(item) => void docs.retry(item)}
+            onOpen={(item) => void docs.open(item)}
+            onDismiss={() =>
+              pending ? docs.dismissUpload(pending.localId) : document && docs.dismissTarget(document.id)
+            }
+          />
+        ) : undefined,
+    };
+  };
 
   const hasMatchingInput = company.cpv_prefixes.length > 0 || company.keywords.length > 0;
   const ensLevel = company.certifications.find(isEnsLevel);
@@ -573,9 +674,12 @@ export function CompanyLedger({
             }
             status={roleceStatus}
             proof={proofCell(
+              "rolece",
               roleceProof,
               company.rolece_status === "active" || company.rolece_status === "applied",
+              "ROLECE",
             )}
+            {...proofRow("rolece", "ROLECE")}
             editing={isEditing("rolece")}
             onEdit={edit("rolece")}
             editor={
@@ -608,7 +712,13 @@ export function CompanyLedger({
               )
             }
             status={classificationStatus}
-            proof={proofCell(classificationProof, company.classification_status === "active")}
+            proof={proofCell(
+              "classification",
+              classificationProof,
+              company.classification_status === "active",
+              "Business classification",
+            )}
+            {...proofRow("classification", "Business classification")}
             editing={isEditing("classification")}
             onEdit={edit("classification")}
             editor={
@@ -658,7 +768,8 @@ export function CompanyLedger({
         >
           {CORE_CERTS.map((cert) => {
             const held = company.certifications.includes(cert.value);
-            const document = held ? proof(certProofKey(cert.value)) : undefined;
+            const key = certProofKey(cert.value);
+            const document = held ? proof(key) : undefined;
             const id = `cert:${cert.value}`;
             return (
               <FactRow
@@ -668,7 +779,8 @@ export function CompanyLedger({
                 hint={cert.hint}
                 value={held ? "Certified" : "Not held"}
                 status={certStatus(held, document)}
-                proof={proofCell(document, held)}
+                proof={proofCell(key, document, held, cert.label)}
+                {...proofRow(key, cert.label)}
                 editing={isEditing(id)}
                 onEdit={edit(id)}
                 editor={
@@ -699,7 +811,8 @@ export function CompanyLedger({
             hint="Esquema Nacional de Seguridad"
             value={ensLevel ? ENS_LABELS[ensLevel] : "Not held"}
             status={certStatus(Boolean(ensLevel), ensProof)}
-            proof={proofCell(ensProof, Boolean(ensLevel))}
+            proof={proofCell("cert:ENS", ensProof, Boolean(ensLevel), "ENS")}
+            {...proofRow("cert:ENS", "ENS")}
             editing={isEditing("cert:ENS")}
             onEdit={edit("cert:ENS")}
             editor={
@@ -724,7 +837,9 @@ export function CompanyLedger({
           />
           {otherCerts.map((value) => {
             const option = CERTIFICATIONS.find((candidate) => candidate.value === value);
-            const document = proof(certProofKey(value));
+            const key = certProofKey(value);
+            const document = proof(key);
+            const label = option?.label ?? value;
             return (
               <FactRow
                 key={value}
@@ -733,7 +848,8 @@ export function CompanyLedger({
                 hint={`${option?.description ?? "Certification"} · kept for bid prep`}
                 value="Certified"
                 status={certStatus(true, document)}
-                proof={proofCell(document, true)}
+                proof={proofCell(key, document, true, label)}
+                {...proofRow(key, label)}
                 action={
                   <button
                     type="button"
@@ -757,8 +873,8 @@ export function CompanyLedger({
           uploads={docs.uploads}
           errors={docs.errors}
           companyNif={company.nif}
-          onPick={() => fileInput.current?.click()}
-          onDrop={docs.upload}
+          dragging={drag.active && !drag.target}
+          onPick={() => pickFiles()}
           onConfirm={(document) => void docs.confirm(document)}
           onReject={(document) => void docs.reject(document)}
           onRetry={(document) => void docs.retry(document)}
@@ -773,14 +889,26 @@ export function CompanyLedger({
           hidden
           accept=".pdf,.xml,.zip,application/pdf,application/xml,text/xml,application/zip"
           onChange={(event) => {
+            const target = pickTarget.current;
             if (event.target.files?.length) {
-              docs.upload(event.target.files);
-              document.getElementById("documents")?.scrollIntoView({ behavior: "smooth" });
+              docs.upload(event.target.files, target);
+              if (!target) document.getElementById("documents")?.scrollIntoView({ behavior: "smooth" });
             }
+            pickTarget.current = undefined;
             event.target.value = "";
           }}
         />
       </main>
+
+      {drag.active ? (
+        <div className="drop-overlay" aria-hidden="true">
+          <span className="drop-overlay-pill">
+            {drag.target
+              ? "Release to attach it to this row"
+              : "Drop anywhere to add to Documents, or onto a certificate row to attach it as proof"}
+          </span>
+        </div>
+      ) : null}
 
       <GapRail company={company} revision={revision} onAction={handleGap} />
     </div>

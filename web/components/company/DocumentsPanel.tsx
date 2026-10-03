@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { describeExtraction } from "@/lib/evidence";
 import type { CompanyDocument } from "@/lib/types";
 import { DocChip } from "./FactRow";
@@ -11,8 +10,9 @@ type DocumentsPanelProps = {
   uploads: PendingUpload[];
   errors: Record<string, string>;
   companyNif: string;
+  // a file is being dragged over the page, not over a specific row
+  dragging: boolean;
   onPick: () => void;
-  onDrop: (files: FileList) => void;
   onConfirm: (document: CompanyDocument) => void;
   onReject: (document: CompanyDocument) => void;
   onRetry: (document: CompanyDocument) => void;
@@ -35,15 +35,14 @@ export function DocumentsPanel({
   uploads,
   errors,
   companyNif,
+  dragging,
   onPick,
-  onDrop,
   onConfirm,
   onReject,
   onRetry,
   onOpen,
   onDismissUpload,
 }: DocumentsPanelProps) {
-  const [dragging, setDragging] = useState(false);
   const toReview = documents.filter((document) => document.processing_status === "needs_review");
   const rest = documents.filter((document) => document.processing_status !== "needs_review");
 
@@ -58,22 +57,8 @@ export function DocumentsPanel({
         </span>
       </div>
 
-      <div
-        className={`dropzone${dragging ? " dropzone-active" : ""}`}
-        onDragEnter={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragOver={(event) => event.preventDefault()}
-        onDragLeave={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragging(false);
-        }}
-        onDrop={(event) => {
-          event.preventDefault();
-          setDragging(false);
-          if (event.dataTransfer.files.length) onDrop(event.dataTransfer.files);
-        }}
-      >
+      {/* Drops are handled page-wide in CompanyLedger. */}
+      <div className={`dropzone${dragging ? " dropzone-active" : ""}`}>
         <span className="dropzone-icon" aria-hidden="true">
           ↑
         </span>

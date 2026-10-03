@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ProofKey } from "@/lib/evidence";
 import { createClient } from "@/lib/supabase/client";
 import type { CompanyDocument, DocumentExtraction } from "@/lib/types";
 
@@ -9,6 +10,8 @@ export type PendingUpload = {
   name: string;
   progress: number;
   error?: string;
+  // the ledger row the file was uploaded or dropped on, if any
+  target?: ProofKey;
 };
 
 const BUCKET = "company-documents";
@@ -46,6 +49,8 @@ export function useCompanyDocuments({
   const [documents, setDocuments] = useState(initial);
   const [uploads, setUploads] = useState<PendingUpload[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // document id -> the row it was uploaded from, so that row can show its progress and review
+  const [targets, setTargets] = useState<Record<string, ProofKey>>({});
 
   function patchDocument(id: string, change: Partial<CompanyDocument>) {
     setDocuments((current) =>
@@ -84,7 +89,7 @@ export function useCompanyDocuments({
     }
   }
 
-  async function upload(file: File) {
+  async function upload(file: File, target?: ProofKey) {
     const localId = crypto.randomUUID();
     const fail = (message: string) =>
       setUploads((current) =>
@@ -94,7 +99,7 @@ export function useCompanyDocuments({
       setUploads((current) =>
         current.map((item) => (item.localId === localId ? { ...item, progress: value } : item)),
       );
-    setUploads((current) => [{ localId, name: file.name, progress: 5 }, ...current]);
+    setUploads((current) => [{ localId, name: file.name, progress: 5, target }, ...current]);
 
     if (!companyId) return fail("Create the company profile before adding documents.");
     if (!ACCEPTED.includes(file.type) && !/\.(pdf|xml|zip)$/i.test(file.name)) {
@@ -105,7 +110,8 @@ export function useCompanyDocuments({
 
     try {
       const supabase = createClient();
-      const path = `${userId}/${companyId}/${crypto.randomUUID()}-${safeFilename(file.name)}`;
+      // Storage policies require the company id as the first folder.
+      const path = `${companyId}/${crypto.randomUUID()}-${safeFilename(file.name)}`;
       const hash = await sha256(await file.arrayBuffer());
       progress(25);
 
@@ -138,6 +144,7 @@ export function useCompanyDocuments({
       if (insertError || !record) throw insertError || new Error("The file record could not be saved.");
 
       setUploads((current) => current.filter((item) => item.localId !== localId));
+      if (target) setTargets((current) => ({ ...current, [record.id]: target }));
       setDocuments((current) => [record as CompanyDocument, ...current]);
       await extract(record.id);
     } catch (error) {
@@ -160,10 +167,17 @@ export function useCompanyDocuments({
       const saved = await onConfirmed(document.extraction);
       if (!saved) {
         setError(document.id, "The document is confirmed but the profile didn't update. Try again.");
+        patchDocument(document.id, { processing_status: status, reviewed_at: now, reviewed_by: userId });
+        return;
       }
     }
     patchDocument(document.id, { processing_status: status, reviewed_at: now, reviewed_by: userId });
     setError(document.id);
+    setTargets((current) => {
+      const next = { ...current };
+      delete next[document.id];
+      return next;
+    });
   }
 
   async function open(document: CompanyDocument) {
@@ -184,9 +198,17 @@ export function useCompanyDocuments({
     documents,
     uploads,
     errors,
-    upload: (files: FileList | File[]) => Array.from(files).forEach((file) => void upload(file)),
+    targets,
+    upload: (files: FileList | File[], target?: ProofKey) =>
+      Array.from(files).forEach((file) => void upload(file, target)),
     dismissUpload: (localId: string) =>
       setUploads((current) => current.filter((item) => item.localId !== localId)),
+    dismissTarget: (documentId: string) =>
+      setTargets((current) => {
+        const next = { ...current };
+        delete next[documentId];
+        return next;
+      }),
     confirm: (document: CompanyDocument) => review(document, true),
     reject: (document: CompanyDocument) => review(document, false),
     retry: (document: CompanyDocument) => extract(document.id),

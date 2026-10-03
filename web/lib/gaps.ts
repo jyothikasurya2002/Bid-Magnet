@@ -76,6 +76,18 @@ const RULES: Array<{
   },
 ];
 
+// On equal counts the quicker fix goes first: typing a number beats getting certified.
+const EFFORT: Record<string, number> = {
+  "turnover-missing": 0,
+  "turnover-low": 1,
+  rolece: 3,
+  classification: 3,
+  iso27001: 3,
+  iso9001: 3,
+  ens: 3,
+};
+const effort = (gap: Gap) => EFFORT[gap.key] ?? 1; // regions: one click
+
 const OUTSIDE_REGION = /^Outside your regions \((.+)\)$/;
 
 export function computeGaps(matches: MatchRow[], company: CompanyProfile) {
@@ -134,6 +146,6 @@ export function computeGaps(matches: MatchRow[], company: CompanyProfile) {
     });
   }
 
-  gaps.sort((a, b) => b.count - a.count);
+  gaps.sort((a, b) => b.count - a.count || effort(a) - effort(b));
   return { gaps, affected: affected.size, total: matches.length };
 }

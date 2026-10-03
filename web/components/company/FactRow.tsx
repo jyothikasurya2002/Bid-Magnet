@@ -16,6 +16,11 @@ type FactRowProps = {
   editor?: ReactNode;
   onEdit?: () => void;
   action?: ReactNode;
+  // rows that take a document as proof accept files dropped on them
+  proofKey?: string;
+  dropActive?: boolean;
+  // full-width strip under the row (upload progress, review)
+  below?: ReactNode;
 };
 
 export function LedgerTable({
@@ -65,13 +70,17 @@ export function FactRow({
   editor,
   onEdit,
   action,
+  proofKey,
+  dropActive = false,
+  below,
 }: FactRowProps) {
   const flagged = status?.tone === "warn";
   return (
     <div
-      className={`ledger-row${flagged ? " ledger-row-flagged" : ""}${editing ? " ledger-row-editing" : ""}`}
+      className={`ledger-row${flagged ? " ledger-row-flagged" : ""}${editing ? " ledger-row-editing" : ""}${dropActive ? " ledger-row-drop" : ""}`}
       id={`fact-${id}`}
       role="row"
+      data-proof-key={proofKey}
     >
       <div className="fact-name" role="rowheader">
         <span>{label}</span>
@@ -102,6 +111,8 @@ export function FactRow({
           </div>
         </>
       )}
+      {dropActive ? <span className="row-drop-hint">Drop to attach as {label} proof</span> : null}
+      {below ? <div className="fact-below">{below}</div> : null}
     </div>
   );
 }

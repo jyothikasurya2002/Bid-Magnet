@@ -30,10 +30,18 @@ describe("gap rail counts", () => {
     expect(affected).toBe(2);
     expect(gaps.map((gap) => [gap.key, gap.count])).toEqual([
       ["rolece", 2],
-      ["iso27001", 1],
       ["region:Cataluña", 1],
+      ["iso27001", 1],
     ]);
-    expect(gaps[2].action).toEqual({ kind: "add-region", label: "Add Cataluña", region: "Cataluña" });
+    expect(gaps[1].action).toEqual({ kind: "add-region", label: "Add Cataluña", region: "Cataluña" });
+  });
+
+  it("puts the quicker fix first when counts tie", () => {
+    const { gaps } = computeGaps(
+      [{ tender_id: "a", reasons: [reason("warn", "Register in ROLECE: many tenders require it by the deadline")] }],
+      { ...company, annual_turnover: null },
+    );
+    expect(gaps.map((gap) => gap.key)).toEqual(["turnover-missing", "rolece"]);
   });
 
   it("flags a missing turnover against every match", () => {
