@@ -108,10 +108,10 @@ Format `% Single-Bid Awards`, `Median Discount` and `% Won by SMEs` as **Percent
   - Set `link` *Data category* to **Web URL** to make it clickable.
 
 ## 5. Insights to present (they come out of this data)
-- **About 45% of IT awards had a single bidder.** Competition is thin, so a prepared SME has a real chance.
+- **About 42% of IT awards had a single bidder.** Competition is thin, so a prepared SME has a real chance.
 - **Median discount in competitive procedures is about 10%.** Negotiated procedures without publicity show 0%.
-- A few large integrators (Telefónica, Inetum, Indra, Orange, Vodafone) win the most value, but many contracts go to SMEs.
-- Most IT tenders are under €150k: the SME-sized market.
+- A few large integrators (Telefónica, Inetum, Indra, Orange, Vodafone) win the most value, but **about half of all awards (52%) go to SMEs**.
+- **65% of IT tenders are under €150k:** the SME-sized market.
 - Regional platforms add about 30% more tenders, mainly from Catalonia and the Basque Country.
 
 ## 6. Data notes (mention them; examiners like it)
