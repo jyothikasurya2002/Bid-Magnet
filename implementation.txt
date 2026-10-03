@@ -105,7 +105,28 @@ PIPELINE (data-pipeline/)
                     public, extensions). match_tenders adds similarity points
                     (>=0.55 +15, >=0.45 +8, <0.30 -5) and also returns tenders
                     matched by meaning only (sim >= 0.5). Re-runnable.
-                    Local test DB needs image pgvector/pgvector:pg16.
+                    Local test DB needs image pgvector/pgvector:pg16 (+ a stub
+                    `storage` schema: buckets, objects with RLS, foldername()).
+                    Section 1b (frontend request): companies.nif, website_url,
+                    rolece_status, rolece_last_verified_at, classification_status,
+                    classification_codes, updated_at (trigger set_updated_at);
+                    company_documents (owner RLS, unique company_id+sha256,
+                    status check); bucket company-documents (private, 20 MB,
+                    pdf/xml/zip/png/jpeg; storage.objects policies require
+                    path '<company_id>/...' of an owned company); views
+                    company_credentials (ready+unexpired ENS/ISO -> ENS_*/ISO*)
+                    and company_document_alerts (<= 90 days);
+                    classification_covers(codes, 'V5-1'). match_tenders uses
+                    certs = certifications + company_credentials, rolece_ok =
+                    rolece or rolece_status='active', classification codes.
+                    6b partner_candidates(tender, company, limit): winners of
+                    tenders with embedding sim >= 0.6 (top 400 neighbours), excl.
+                    own NIF and masked NIFs; order same_region, covers_experience
+                    (max win >= 0.7 x annual value), best_sim + 0.05*ln(1+wins).
+                    Must stay AFTER competitor_stats in backend.sql (SQL functions
+                    are validated at creation; fresh installs failed otherwise).
+                    match_tenders solvency_light = simplified & value < 60k.
+                    competitor_stats.is_sme = majority of awards flagged SME.
 - API.md            how the Next.js app calls everything (supabase-js).
 - .github/workflows/daily-ingest.yml (repo root): live 3 pages -> build -> load;
                     secret DATABASE_URL is SET and the job works (first run
