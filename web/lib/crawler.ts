@@ -1,25 +1,18 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import * as cheerio from "cheerio";
-import robotsParser from "robots-parser";
 
-const USER_AGENT = "BidMagnetProfileBot/1.0 (+company-profile-import)";
+// A browser-like agent: many company sites refuse unknown bots outright.
+const USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36 BidMagnet/1.0";
 const MAX_BYTES = 1_000_000;
 const MAX_REDIRECTS = 3;
-const MAX_PAGES = 7;
 const PAGE_TIMEOUT_MS = 8_000;
 
 export type CrawledPage = {
   url: string;
   title: string;
   text: string;
-};
-
-export type CrawlPageResult = {
-  url: string;
-  title: string;
-  status: "read" | "skipped" | "failed";
-  detail?: string;
 };
 
 export function isPrivateAddress(address: string) {
@@ -121,151 +114,15 @@ function extractPage(html: string, url: URL): CrawledPage {
     .replace(/[ \t]+/g, " ")
     .replace(/\n\s*\n+/g, "\n")
     .trim()
-    .slice(0, 35_000);
+    .slice(0, 200_000);
   return { url: url.toString(), title, text };
 }
 
-function scoreLink(url: URL, label: string) {
-  const value = `${url.pathname} ${label}`.toLowerCase();
-  const positive = [
-    "about",
-    "company",
-    "empresa",
-    "nosotros",
-    "services",
-    "servicios",
-    "solutions",
-    "soluciones",
-    "certif",
-    "compliance",
-    "security",
-    "seguridad",
-    "partners",
-    "socios",
-    "customers",
-    "clientes",
-    "cases",
-    "casos",
-    "legal",
-    "aviso",
-  ];
-  const negative = [
-    "blog",
-    "news",
-    "noticias",
-    "jobs",
-    "empleo",
-    "cookies",
-    "privacy",
-    "privacidad",
-    "login",
-    "calendar",
-    "tag/",
-    "author/",
-  ];
-  if (negative.some((word) => value.includes(word))) return -1;
-  return positive.reduce(
-    (score, word, index) => score + (value.includes(word) ? 100 - index : 0),
-    0,
-  );
-}
-
-export async function crawlCompanyWebsite(rawUrl: string) {
-  const initial = new URL(
-    /^https?:\/\//i.test(rawUrl.trim()) ? rawUrl.trim() : `https://${rawUrl.trim()}`,
-  );
-
-  const homepageResult = await safeFetch(initial);
-  if (!homepageResult.response.ok) {
-    throw new Error(`Website returned ${homepageResult.response.status}.`);
-  }
-  const contentType = homepageResult.response.headers.get("content-type") || "";
-  if (!contentType.includes("text/html")) {
-    throw new Error("The website did not return an HTML page.");
-  }
-  const homepageHtml = await readLimitedText(homepageResult.response);
-  const canonicalOrigin = homepageResult.finalUrl.origin;
-
-  let robots: ReturnType<typeof robotsParser> | null = null;
-  try {
-    const robotsUrl = new URL("/robots.txt", canonicalOrigin);
-    const robotsResult = await safeFetch(robotsUrl, { accept: "text/plain" });
-    if (robotsResult.response.ok) {
-      robots = robotsParser(robotsUrl.toString(), await readLimitedText(robotsResult.response));
-    }
-  } catch {
-    // An unavailable robots file does not prevent reading the user-provided public page.
-  }
-
-  const pages: CrawledPage[] = [extractPage(homepageHtml, homepageResult.finalUrl)];
-  const results: CrawlPageResult[] = [
-    {
-      url: homepageResult.finalUrl.toString(),
-      title: pages[0].title,
-      status: "read",
-    },
-  ];
-
-  const $ = cheerio.load(homepageHtml);
-  const candidates = new Map<string, { url: URL; score: number }>();
-  $("a[href]").each((_, element) => {
-    const href = $(element).attr("href");
-    if (!href) return;
-    try {
-      const url = new URL(href, homepageResult.finalUrl);
-      url.hash = "";
-      if (url.origin !== canonicalOrigin || url.search) return;
-      const score = scoreLink(url, $(element).text());
-      if (score <= 0) return;
-      const key = url.toString().replace(/\/$/, "");
-      const existing = candidates.get(key);
-      if (!existing || score > existing.score) candidates.set(key, { url, score });
-    } catch {
-      // Ignore malformed links.
-    }
-  });
-
-  const selected = [...candidates.values()]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_PAGES - 1);
-
-  for (const { url } of selected) {
-    if (robots && robots.isAllowed(url.toString(), USER_AGENT) === false) {
-      results.push({
-        url: url.toString(),
-        title: url.pathname,
-        status: "skipped",
-        detail: "Blocked by robots.txt",
-      });
-      continue;
-    }
-    try {
-      const pageResult = await safeFetch(url);
-      if (!pageResult.response.ok) {
-        throw new Error(`HTTP ${pageResult.response.status}`);
-      }
-      const type = pageResult.response.headers.get("content-type") || "";
-      if (!type.includes("text/html")) throw new Error("Unsupported content");
-      const page = extractPage(
-        await readLimitedText(pageResult.response),
-        pageResult.finalUrl,
-      );
-      if (page.text.length < 80) throw new Error("Page contained no useful text");
-      pages.push(page);
-      results.push({ url: page.url, title: page.title, status: "read" });
-    } catch (error) {
-      results.push({
-        url: url.toString(),
-        title: url.pathname,
-        status: "failed",
-        detail: error instanceof Error ? error.message : "Could not read page",
-      });
-    }
-  }
-
-  return {
-    canonicalUrl: homepageResult.finalUrl.toString(),
-    pages,
-    results,
-  };
+// Text of one public HTML page, for checking a quote the research agent cites.
+export async function fetchPageText(rawUrl: string) {
+  const { response, finalUrl } = await safeFetch(new URL(rawUrl));
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const type = response.headers.get("content-type") || "";
+  if (!type.includes("text/html")) throw new Error("Not an HTML page");
+  return extractPage(await readLimitedText(response), finalUrl);
 }

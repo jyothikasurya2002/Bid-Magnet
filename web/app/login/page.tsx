@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LoginForm } from "@/components/auth/LoginForm";
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
-import { requestMagicLink } from "./actions";
 
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string; sent?: string }>;
+  searchParams: Promise<{ error?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -16,14 +15,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (user) redirect("/onboarding");
+    if (user) redirect("/company");
   }
 
   return (
     <main className="auth-page">
       <div className="auth-brand">
-        <span className="brand-mark">BM</span>
-        <span>Tender Copilot</span>
+        <span className="brand-mark" aria-hidden="true" />
+        <span>BidMagnet</span>
       </div>
 
       <section className="auth-card" aria-labelledby="login-title">
@@ -48,36 +47,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
         ) : null}
 
-        {params.sent ? (
-          <div className="notice notice-success" role="status">
-            <strong>Check your inbox</strong>
-            <span>We sent a sign-in link to {params.sent}.</span>
-          </div>
-        ) : (
-          <form action={requestMagicLink} className="form-stack">
-            <div className="field">
-              <label htmlFor="email">Work email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@company.es"
-                required
-                disabled={!configured}
-              />
-            </div>
-            <button className="button button-primary button-full" disabled={!configured}>
-              Email me a sign-in link
-            </button>
-          </form>
-        )}
+        <LoginForm configured={configured} />
 
         <p className="auth-footnote">
-          Tender Copilot prepares your bid. You still submit on the official
+          BidMagnet prepares your bid. You still submit on the official
           procurement platform.
         </p>
-        {params.sent ? <Link href="/login">Use another email</Link> : null}
       </section>
     </main>
   );

@@ -115,23 +115,23 @@ export const CPV_OPTIONS: CatalogueOption[] = [
 ];
 
 export const CERTIFICATIONS: CatalogueOption[] = [
-  { value: "ISO27001", label: "ISO/IEC 27001", description: "Seguridad de la información" },
-  { value: "ISO9001", label: "ISO 9001", description: "Gestión de calidad" },
-  { value: "ISO14001", label: "ISO 14001", description: "Gestión ambiental" },
-  { value: "ISO45001", label: "ISO 45001", description: "Seguridad y salud laboral" },
-  { value: "ISO20000_1", label: "ISO/IEC 20000-1", description: "Gestión de servicios TI" },
-  { value: "ISO22301", label: "ISO 22301", description: "Continuidad de negocio" },
-  { value: "ISO27701", label: "ISO/IEC 27701", description: "Gestión de privacidad" },
-  { value: "ISO42001", label: "ISO/IEC 42001", description: "Gestión de inteligencia artificial" },
-  { value: "ENS_BASICA", label: "ENS BÁSICA", description: "Declaración o certificación de conformidad" },
-  { value: "ENS_MEDIA", label: "ENS MEDIA", description: "Certificación de conformidad" },
-  { value: "ENS_ALTA", label: "ENS ALTA", description: "Certificación de conformidad" },
-  { value: "CMMI", label: "CMMI", description: "Madurez de procesos de desarrollo" },
-  { value: "SOC2", label: "SOC 2", description: "Informe de aseguramiento" },
+  { value: "ISO27001", label: "ISO/IEC 27001", description: "Information security" },
+  { value: "ISO9001", label: "ISO 9001", description: "Quality management" },
+  { value: "ISO14001", label: "ISO 14001", description: "Environmental management" },
+  { value: "ISO45001", label: "ISO 45001", description: "Occupational health and safety" },
+  { value: "ISO20000_1", label: "ISO/IEC 20000-1", description: "IT service management" },
+  { value: "ISO22301", label: "ISO 22301", description: "Business continuity" },
+  { value: "ISO27701", label: "ISO/IEC 27701", description: "Privacy management" },
+  { value: "ISO42001", label: "ISO/IEC 42001", description: "AI management" },
+  { value: "ENS_BASICA", label: "ENS BÁSICA", description: "Self-assessment or certification" },
+  { value: "ENS_MEDIA", label: "ENS MEDIA", description: "Conformity certification" },
+  { value: "ENS_ALTA", label: "ENS ALTA", description: "Conformity certification" },
+  { value: "CMMI", label: "CMMI", description: "Development process maturity" },
+  { value: "SOC2", label: "SOC 2", description: "Assurance report" },
   {
     value: "EN301549",
     label: "UNE-EN 301 549",
-    description: "Accesibilidad de productos y servicios TIC",
+    description: "ICT accessibility",
   },
 ];
 

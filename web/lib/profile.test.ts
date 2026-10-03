@@ -3,7 +3,8 @@ import {
   applyDocumentExtraction,
   applyImportSuggestion,
   companyWritePayload,
-  validateCompanyProfile,
+  companyFromRow,
+  companyPatchPayload,
 } from "./profile";
 import { EMPTY_COMPANY, type DocumentExtraction } from "./types";
 
@@ -16,7 +17,9 @@ describe("company profile mapping", () => {
       values: ["cloud", "municipal software"],
       evidence_state: "direct_source",
       source_url: "https://example.es/services",
+      source_title: "Services",
       source_quote: "Cloud and municipal software",
+      verified: true,
       explanation: "Explicitly listed services",
     });
     expect(result.keywords).toEqual(["cloud", "municipal software"]);
@@ -70,7 +73,55 @@ describe("company profile mapping", () => {
     expect(payload.has_classification).toBe(true);
   });
 
-  it("requires identity, description and matching inputs", () => {
-    expect(validateCompanyProfile(EMPTY_COMPANY)).toHaveLength(3);
+  it("maps an ENS certificate to a single ENS category", () => {
+    const extraction: DocumentExtraction = {
+      document_type: "ENS certificate",
+      legal_entity_name: null,
+      nif: null,
+      credential_code: "ENS",
+      credential_level: "MEDIA",
+      standard_edition: null,
+      certificate_number: null,
+      issuer: null,
+      accreditation_body: null,
+      scope: null,
+      covered_sites: [],
+      issue_date: null,
+      expiry_date: "2027-03-01",
+      source_page: 1,
+      source_quote: null,
+      verified: false,
+      warnings: [],
+      rolece: null,
+      ens: {
+        category: "MEDIA",
+        evidence_type: "certification",
+        covered_systems_services: [],
+        renewal_date: null,
+      },
+    };
+    const company = { ...EMPTY_COMPANY, certifications: ["ENS_BASICA", "ISO9001"] };
+    const result = applyDocumentExtraction(company, extraction);
+    expect(result.certifications).toEqual(["ISO9001", "ENS_MEDIA"]);
+  });
+
+  it("writes only the edited fields and their legacy booleans", () => {
+    const payload = companyPatchPayload(
+      { rolece_status: "applied", nif: "  " },
+      "2026-10-03T08:00:00Z",
+    );
+    expect(payload).toEqual({
+      rolece_status: "applied",
+      rolece: false,
+      nif: null,
+      updated_at: "2026-10-03T08:00:00Z",
+    });
+  });
+
+  it("reads legacy rows that only have the boolean flags", () => {
+    const company = companyFromRow({ name: "Demo", rolece: true, has_classification: false });
+    expect(company.rolece_status).toBe("active");
+    expect(company.classification_status).toBe("unknown");
+    expect(company.cpv_prefixes).toEqual([]);
   });
 });

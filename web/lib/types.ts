@@ -55,20 +55,28 @@ export type ImportSuggestion = {
   values: string[];
   evidence_state: EvidenceState;
   source_url: string;
+  source_title: string;
   source_quote: string;
   explanation: string;
+  // true when we re-opened source_url and found source_quote on it
+  verified: boolean;
 };
+
+export type ResearchSource = { url: string; title: string; cited: boolean };
 
 export type ImportResult = {
   canonical_url: string;
-  checked_pages: Array<{
-    url: string;
-    title: string;
-    status: "read" | "skipped" | "failed";
-    detail?: string;
-  }>;
+  legal_name: string | null;
+  ambiguous: boolean;
+  sources: ResearchSource[];
+  not_found: string[];
   suggestions: ImportSuggestion[];
 };
+
+export type ResearchPoll =
+  | { status: "running" }
+  | { status: "failed"; error: string }
+  | { status: "done"; result: ImportResult };
 
 export type MatchReason = {
   type: "ok" | "warn" | "gap";

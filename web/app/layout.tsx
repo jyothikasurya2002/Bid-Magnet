@@ -16,8 +16,8 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Tender Copilot",
-    template: "%s · Tender Copilot",
+    default: "BidMagnet",
+    template: "%s · BidMagnet",
   },
   description: "Find and prepare the Spanish IT tenders your company can win.",
 };

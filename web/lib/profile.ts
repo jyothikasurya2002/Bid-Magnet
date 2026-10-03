@@ -1,8 +1,9 @@
 import { CERTIFICATIONS, REGIONS } from "./catalog";
-import type {
-  CompanyProfile,
-  DocumentExtraction,
-  ImportSuggestion,
+import {
+  EMPTY_COMPANY,
+  type CompanyProfile,
+  type DocumentExtraction,
+  type ImportSuggestion,
 } from "./types";
 
 function normalized(value: string) {
@@ -26,6 +27,12 @@ export function canonicalCertification(value: string) {
 export function canonicalRegion(value: string) {
   const target = normalized(value);
   return REGIONS.find((option) => normalized(option.value) === target)?.value;
+}
+
+export const ENS_LEVELS = ["ENS_BASICA", "ENS_MEDIA", "ENS_ALTA"] as const;
+
+export function isEnsLevel(value: string) {
+  return (ENS_LEVELS as readonly string[]).includes(value);
 }
 
 export function applyImportSuggestion(
@@ -68,17 +75,27 @@ export function applyImportSuggestion(
   return { ...company, [suggestion.field]: suggestion.value_text };
 }
 
+// The certification a document proves, as a catalogue value (ENS carries its category).
+export function extractionCertification(extraction: DocumentExtraction) {
+  if (extraction.ens?.category) return `ENS_${extraction.ens.category}`;
+  return extraction.credential_code
+    ? canonicalCertification(extraction.credential_code)
+    : undefined;
+}
+
 export function applyDocumentExtraction(
   company: CompanyProfile,
   extraction: DocumentExtraction,
 ) {
   const next = { ...company };
-  const credential = extraction.credential_code
-    ? canonicalCertification(extraction.credential_code)
-    : undefined;
+  const credential = extractionCertification(extraction);
 
   if (credential) {
-    next.certifications = [...new Set([...next.certifications, credential])];
+    // A company holds one ENS category at a time.
+    const others = isEnsLevel(credential)
+      ? next.certifications.filter((value) => !isEnsLevel(value))
+      : next.certifications;
+    next.certifications = [...new Set([...others, credential])];
   }
   if (extraction.document_type?.toLowerCase().includes("rolece")) {
     next.rolece_status = "active";
@@ -91,16 +108,52 @@ export function applyDocumentExtraction(
   return next;
 }
 
-export function validateCompanyProfile(company: CompanyProfile) {
-  const errors: string[] = [];
-  if (!company.name.trim()) errors.push("Enter the legal company name.");
-  if (!company.description.trim()) {
-    errors.push("Describe the services your company provides.");
+// Supabase row -> profile, filling the columns older rows lack.
+export function companyFromRow(row: Record<string, unknown>): CompanyProfile {
+  const data = row as Partial<CompanyProfile> & {
+    rolece?: boolean;
+    has_classification?: boolean;
+  };
+  return {
+    ...EMPTY_COMPANY,
+    ...data,
+    name: data.name || "",
+    nif: data.nif || "",
+    website_url: data.website_url || "",
+    description: data.description || "",
+    cpv_prefixes: data.cpv_prefixes || [],
+    keywords: data.keywords || [],
+    regions: data.regions || [],
+    certifications: data.certifications || [],
+    rolece_status: data.rolece_status || (data.rolece ? "active" : "unknown"),
+    classification_status:
+      data.classification_status || (data.has_classification ? "active" : "unknown"),
+    classification_codes: data.classification_codes || [],
+  };
+}
+
+// Columns for a partial edit. Keeps the legacy booleans that match_tenders
+// reads (rolece, has_classification) in step with the status fields.
+export function companyPatchPayload(
+  patch: Partial<CompanyProfile>,
+  updatedAt: string,
+) {
+  const payload: Record<string, unknown> = { ...patch, updated_at: updatedAt };
+  delete payload.id;
+  delete payload.owner;
+  if (patch.name !== undefined) payload.name = patch.name.trim();
+  if (patch.description !== undefined) payload.description = patch.description.trim();
+  if (patch.nif !== undefined) payload.nif = patch.nif.trim() || null;
+  if (patch.website_url !== undefined) {
+    payload.website_url = patch.website_url.trim() || null;
   }
-  if (!company.cpv_prefixes.length && !company.keywords.length) {
-    errors.push("Add at least one CPV code or service keyword.");
+  if (patch.rolece_status !== undefined) {
+    payload.rolece = patch.rolece_status === "active";
   }
-  return errors;
+  if (patch.classification_status !== undefined) {
+    payload.has_classification = patch.classification_status === "active";
+  }
+  return payload;
 }
 
 export function companyWritePayload(company: CompanyProfile, updatedAt: string) {

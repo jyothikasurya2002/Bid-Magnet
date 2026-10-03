@@ -1,36 +1,6 @@
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import type { CrawledPage } from "./crawler";
-
-const WebsiteSuggestionSchema = z.object({
-  field: z.enum([
-    "name",
-    "nif",
-    "description",
-    "website_url",
-    "keywords",
-    "cpv_prefixes",
-    "regions",
-    "certifications",
-  ]),
-  value_text: z.string(),
-  values: z.array(z.string()),
-  evidence_state: z.enum([
-    "direct_source",
-    "inferred",
-    "needs_judgement",
-    "conflict",
-    "no_evidence",
-  ]),
-  source_url: z.string(),
-  source_quote: z.string(),
-  explanation: z.string(),
-});
-
-const WebsiteImportSchema = z.object({
-  suggestions: z.array(WebsiteSuggestionSchema),
-});
 
 const DocumentExtractionSchema = z.object({
   document_type: z.string().nullable(),
@@ -69,7 +39,7 @@ const DocumentExtractionSchema = z.object({
     .nullable(),
 });
 
-function getClient() {
+export function getClient() {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured on the web server.");
@@ -79,46 +49,6 @@ function getClient() {
 
 function model() {
   return process.env.OPENAI_MODEL || "gpt-4.1-mini";
-}
-
-export async function extractWebsiteSuggestions(
-  pages: CrawledPage[],
-  canonicalUrl: string,
-) {
-  const corpus = pages
-    .map(
-      (page, index) =>
-        `=== SOURCE ${index + 1} ===\nURL: ${page.url}\nTITLE: ${page.title}\n${page.text}`,
-    )
-    .join("\n\n")
-    .slice(0, 120_000);
-
-  const response = await getClient().responses.parse({
-    model: model(),
-    input: [
-      {
-        role: "system",
-        content:
-          "You extract a Spanish IT company's public profile from a bounded website corpus. " +
-          "Every direct fact must quote exact text from its source URL. Never infer turnover, employee count, " +
-          "ROLECE status, business classification, budget preferences, or certification validity. " +
-          "CPV codes and tender keywords are recommendations and must be marked inferred. " +
-          "Do not treat absence from the website as a negative fact. Return only useful, non-duplicate suggestions.",
-      },
-      {
-        role: "user",
-        content: `Canonical website: ${canonicalUrl}\n\n${corpus}`,
-      },
-    ],
-    text: {
-      format: zodTextFormat(WebsiteImportSchema, "company_website_import"),
-    },
-  });
-
-  if (!response.output_parsed) {
-    throw new Error("OpenAI returned no structured company suggestions.");
-  }
-  return response.output_parsed.suggestions;
 }
 
 type DocumentInput = {
@@ -177,4 +107,4 @@ export async function extractCompanyDocument(input: DocumentInput) {
   return response.output_parsed;
 }
 
-export { DocumentExtractionSchema, WebsiteImportSchema };
+export { DocumentExtractionSchema };
