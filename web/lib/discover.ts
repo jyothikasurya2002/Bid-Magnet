@@ -115,3 +115,27 @@ export function matchesSectors(cpvCodes: string[] | null, prefixes: string[]) {
   if (!prefixes.length) return true;
   return (cpvCodes || []).some((code) => prefixes.some((prefix) => code.startsWith(prefix)));
 }
+
+// Triage order: anything closing within 5 business days first (soonest first), then best fit.
+export function triageOrder(tenders: FeedTender[], today = new Date()) {
+  const urgent = (tender: FeedTender) =>
+    tender.deadline_date !== null && businessDaysUntil(tender.deadline_date, today) <= 5;
+  return [...tenders].sort((a, b) => {
+    const ua = urgent(a);
+    const ub = urgent(b);
+    if (ua !== ub) return ua ? -1 : 1;
+    if (ua && ub) return (a.deadline_date ?? "").localeCompare(b.deadline_date ?? "");
+    return (b.score ?? 0) - (a.score ?? 0);
+  });
+}
+
+export const TRIAGE_BATCH = 12;
+
+// One-tap reasons for "Not for us", saved in tender_decisions.reason.
+export const PASS_REASONS = [
+  { key: "too_big", label: "Too big for us" },
+  { key: "wrong_work", label: "Not our kind of work" },
+  { key: "no_time", label: "Not enough time" },
+  { key: "missing_requirement", label: "Missing a requirement" },
+  { key: "other", label: "Other" },
+] as const;

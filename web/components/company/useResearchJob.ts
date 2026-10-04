@@ -50,17 +50,31 @@ export function elapsedLabel(ms: number) {
 }
 
 export type ResearchState =
+  | { kind: "idle" }
   | { kind: "running"; startedAt: number }
   | { kind: "done"; result: ImportResult }
   | { kind: "error"; message: string };
 
 // Starts (or resumes) background research for a company website and polls until it ends.
-export function useResearchJob(companyId: string, url: string) {
-  const [state, setState] = useState<ResearchState>(() => ({ kind: "running", startedAt: Date.now() }));
+// `enabled: false` keeps it idle; `onDone` runs once with the result.
+export function useResearchJob(
+  companyId: string,
+  url: string,
+  options: { enabled?: boolean; onDone?: (result: ImportResult) => void } = {},
+) {
+  const enabled = options.enabled ?? true;
+  const [state, setState] = useState<ResearchState>(() =>
+    enabled ? { kind: "running", startedAt: Date.now() } : { kind: "idle" },
+  );
   const [attempt, setAttempt] = useState(0);
   const jobId = useRef<string | null>(null);
+  const onDone = useRef(options.onDone);
+  useEffect(() => {
+    onDone.current = options.onDone;
+  });
 
   useEffect(() => {
+    if (!enabled || !companyId || !url) return;
     let cancelled = false;
     let timer: number | undefined;
 
@@ -78,6 +92,7 @@ export function useResearchJob(companyId: string, url: string) {
         jobId.current = null;
         if (answer.status === "failed") throw new Error(answer.error);
         setState({ kind: "done", result: answer.result });
+        onDone.current?.(answer.result);
       } catch (caught) {
         if (cancelled) return;
         saveJob(companyId, null);
@@ -129,7 +144,7 @@ export function useResearchJob(companyId: string, url: string) {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [url, companyId, attempt]);
+  }, [url, companyId, attempt, enabled]);
 
   return {
     state,

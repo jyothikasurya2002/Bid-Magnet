@@ -7,12 +7,14 @@ import {
   businessDaysUntil,
   euroShort,
   sourceLabel,
+  TRIAGE_BATCH,
+  triageOrder,
   type Decision,
   type FeedTender,
   type Filters,
 } from "@/lib/discover";
 import { createClient } from "@/lib/supabase/client";
-import { SwipeDeck } from "./SwipeDeck";
+import { FocusMode } from "./FocusMode";
 import { TenderPane } from "./TenderPane";
 
 type DiscoverFeedProps = {
@@ -50,7 +52,8 @@ export function DiscoverFeed({
   const [filters, setFilters] = useState<Filters>({ minFit: false, closingSoon: false, hideFrameworks: false });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [paneOpen, setPaneOpen] = useState(true);
-  const [swiping, setSwiping] = useState(false);
+  // Triage queue, fixed when focus mode opens so deciding doesn't reshuffle it.
+  const [focusQueue, setFocusQueue] = useState<FeedTender[] | null>(null);
   const [error, setError] = useState("");
 
   const everything = [...open, ...renewals, ...signals];
@@ -69,7 +72,7 @@ export function DiscoverFeed({
     ? (rows.find((tender) => tender.tender_id === selectedId) ?? rows[0] ?? null)
     : null;
 
-  async function decide(id: string, decision: Decision | null) {
+  async function decide(id: string, decision: Decision | null, reason?: string) {
     const previous = decisions[id];
     setError("");
     setDecisions((current) => {
@@ -81,7 +84,7 @@ export function DiscoverFeed({
     const table = createClient().from("tender_decisions");
     const { error: saveError } = decision
       ? await table.upsert(
-          { company_id: companyId, tender_id: id, decision, decided_at: new Date().toISOString() },
+          { company_id: companyId, tender_id: id, decision, reason: reason ?? null, decided_at: new Date().toISOString() },
           { onConflict: "company_id,tender_id" },
         )
       : await table.delete().eq("company_id", companyId).eq("tender_id", id);
@@ -116,6 +119,24 @@ export function DiscoverFeed({
     budget[0] === null && budget[1] === null
       ? "Any contract size"
       : `${euroShort(budget[0] ?? 0)} – ${budget[1] === null ? "no limit" : euroShort(budget[1])}`;
+
+  if (focusQueue) {
+    return (
+      <div className="discover discover-focus">
+        <FocusMode
+          queue={focusQueue}
+          onDecide={(id, decision, reason) => void decide(id, decision, reason)}
+          onExit={() => setFocusQueue(null)}
+          onShowInterested={() => {
+            setFocusQueue(null);
+            setTab("interested");
+            setSelectedId(null);
+            setPaneOpen(true);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={`discover${selected ? " discover-with-pane" : ""}`}>
@@ -160,12 +181,12 @@ export function DiscoverFeed({
               </Link>
             </div>
             {tab === "open" && lists.open.length ? (
-              <button type="button" className="swipe-launch" onClick={() => setSwiping(true)}>
+              <button type="button" className="swipe-launch" onClick={() => setFocusQueue(triageOrder(lists.open))}>
                 <span className="swipe-launch-icon" aria-hidden="true">
                   <span />
                   <span />
                 </span>
-                Swipe through {lists.open.length}
+                Triage {Math.min(TRIAGE_BATCH, lists.open.length)} · closing soon first
               </button>
             ) : null}
           </div>
@@ -273,18 +294,7 @@ export function DiscoverFeed({
         />
       ) : null}
 
-      {swiping ? (
-        <SwipeDeck
-          tenders={lists.open}
-          onDecide={(id, decision) => void decide(id, decision)}
-          onClose={() => setSwiping(false)}
-          onShowInterested={() => {
-            setSwiping(false);
-            setTab("interested");
-            setSelectedId(null);
-          }}
-        />
-      ) : null}
+
     </div>
   );
 }

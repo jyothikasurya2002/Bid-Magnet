@@ -39,13 +39,3 @@ export function planResearchFill(company: CompanyProfile, result: ImportResult):
   }
   return { patch, applied, review };
 }
-
-// Hand-off from the welcome page to the company page's "what we filled in" summary.
-export type ResearchSummary = {
-  applied: ImportSuggestion[];
-  review: ImportSuggestion[];
-  sources: number;
-  notFound: string[];
-};
-
-export const researchSummaryKey = (companyId: string) => `bidmagnet:research-summary:${companyId}`;

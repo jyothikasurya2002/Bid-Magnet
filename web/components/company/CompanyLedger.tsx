@@ -39,7 +39,7 @@ import {
 } from "./editors";
 import { DocChip, FactRow, LedgerTable, type Status } from "./FactRow";
 import { GapRail } from "./GapRail";
-import { ResearchSummaryCard } from "./ResearchSummaryCard";
+import { SetupLaterBar } from "./SetupLaterBar";
 import { RowUpload } from "./RowUpload";
 import { useCompanyDocuments } from "./useCompanyDocuments";
 import { WebsiteImport } from "./WebsiteImport";
@@ -379,7 +379,7 @@ export function CompanyLedger({
           </div>
         ) : null}
 
-        <ResearchSummaryCard companyId={company.id!} onApply={applySuggestion} />
+        <SetupLaterBar companyId={company.id!} />
 
         <LedgerTable id="overview" title="Overview" note="Who you are on every bid">
           <FactRow

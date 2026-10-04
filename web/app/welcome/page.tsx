@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { signOut } from "@/app/login/actions";
-import { Welcome } from "@/components/welcome/Welcome";
+import { Onboarding } from "@/components/onboarding/Onboarding";
 import { companyFromRow } from "@/lib/profile";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import type { CompanyDocument } from "@/lib/types";
 
 export const metadata = {
   title: "Welcome",
@@ -25,22 +24,17 @@ export default async function WelcomePage() {
     .limit(1)
     .maybeSingle();
 
+  let documents: CompanyDocument[] = [];
+  if (data) {
+    const { data: rows } = await supabase
+      .from("company_documents")
+      .select("*")
+      .eq("company_id", data.id)
+      .order("created_at", { ascending: false });
+    documents = (rows || []) as CompanyDocument[];
+  }
+
   return (
-    <div className="welcome-page">
-      <header className="welcome-top">
-        <Link href="/company" className="product-name" aria-label="BidMagnet">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>BidMagnet</span>
-        </Link>
-        <form action={signOut}>
-          <button className="text-button" type="submit">
-            Sign out
-          </button>
-        </form>
-      </header>
-      <main className="welcome-main">
-        <Welcome initialCompany={data ? companyFromRow(data) : null} />
-      </main>
-    </div>
+    <Onboarding initialCompany={data ? companyFromRow(data) : null} initialDocuments={documents} userId={user.id} />
   );
 }
