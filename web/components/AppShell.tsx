@@ -2,15 +2,15 @@ import Link from "next/link";
 import { signOut } from "@/app/login/actions";
 
 type AppShellProps = {
-  active: "company";
+  active: "discover" | "company";
   companyName?: string;
   userEmail?: string;
   children: React.ReactNode;
 };
 
-// Only the company page exists so far; the rest show as upcoming.
+// Discover and Company exist so far; the rest show as upcoming.
 const NAV_ITEMS = [
-  { key: "discover", label: "Discover" },
+  { key: "discover", label: "Discover", href: "/discover" },
   { key: "pipeline", label: "Pipeline" },
   { key: "bid-prep", label: "Bid prep" },
   { key: "outcomes", label: "Outcomes" },
@@ -21,7 +21,7 @@ export function AppShell({ active, companyName, userEmail, children }: AppShellP
   return (
     <div className="app-shell">
       <header className="topbar">
-        <Link href="/company" className="product-name" aria-label="BidMagnet home">
+        <Link href="/discover" className="product-name" aria-label="BidMagnet home">
           <span className="brand-mark" aria-hidden="true" />
           <span>BidMagnet</span>
         </Link>

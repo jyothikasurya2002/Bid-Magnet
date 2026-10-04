@@ -39,6 +39,7 @@ import {
 } from "./editors";
 import { DocChip, FactRow, LedgerTable, type Status } from "./FactRow";
 import { GapRail } from "./GapRail";
+import { ResearchSummaryCard } from "./ResearchSummaryCard";
 import { RowUpload } from "./RowUpload";
 import { useCompanyDocuments } from "./useCompanyDocuments";
 import { WebsiteImport } from "./WebsiteImport";
@@ -47,7 +48,6 @@ type CompanyLedgerProps = {
   initialCompany: CompanyProfile;
   initialDocuments: CompanyDocument[];
   userId: string;
-  importOnLoad?: boolean;
 };
 
 const EURO = new Intl.NumberFormat("en-IE", {
@@ -107,16 +107,13 @@ export function CompanyLedger({
   initialCompany,
   initialDocuments,
   userId,
-  importOnLoad = false,
 }: CompanyLedgerProps) {
   const [company, setCompany] = useState(initialCompany);
   const companyRef = useRef(company);
   const [editing, setEditing] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [saveError, setSaveError] = useState("");
-  const [importUrl, setImportUrl] = useState<string | null>(
-    importOnLoad && initialCompany.website_url ? initialCompany.website_url : null,
-  );
+  const [importUrl, setImportUrl] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   // row the file picker was opened from; undefined = general upload
   const pickTarget = useRef<ProofKey | undefined>(undefined);
@@ -381,6 +378,8 @@ export function CompanyLedger({
             {saveError}
           </div>
         ) : null}
+
+        <ResearchSummaryCard companyId={company.id!} onApply={applySuggestion} />
 
         <LedgerTable id="overview" title="Overview" note="Who you are on every bid">
           <FactRow

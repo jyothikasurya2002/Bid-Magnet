@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const flowId = url.searchParams.get("sb_flow_id");
-  const next = url.searchParams.get("next") || "/company";
+  const next = url.searchParams.get("next") || "/discover";
 
   if (code) {
     const supabase = await createClient();

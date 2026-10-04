@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
-import { CompanyPage } from "@/components/company/CompanyPage";
+import { CompanyLedger } from "@/components/company/CompanyLedger";
 import { companyFromRow } from "@/lib/profile";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { CompanyDocument } from "@/lib/types";
@@ -25,21 +25,23 @@ export default async function Page() {
     .limit(1)
     .maybeSingle();
 
-  const company = data ? companyFromRow(data) : null;
+  // New users start on the welcome page, which creates the company and researches it.
+  if (!data) redirect("/welcome");
+  const company = companyFromRow(data);
 
-  let documents: CompanyDocument[] = [];
-  if (company?.id) {
-    const { data: rows } = await supabase
-      .from("company_documents")
-      .select("*")
-      .eq("company_id", company.id)
-      .order("created_at", { ascending: false });
-    documents = (rows || []) as CompanyDocument[];
-  }
+  const { data: rows } = await supabase
+    .from("company_documents")
+    .select("*")
+    .eq("company_id", company.id)
+    .order("created_at", { ascending: false });
 
   return (
-    <AppShell active="company" companyName={company?.name} userEmail={user.email}>
-      <CompanyPage initialCompany={company} initialDocuments={documents} userId={user.id} />
+    <AppShell active="company" companyName={company.name} userEmail={user.email}>
+      <CompanyLedger
+        initialCompany={company}
+        initialDocuments={(rows || []) as CompanyDocument[]}
+        userId={user.id}
+      />
     </AppShell>
   );
 }

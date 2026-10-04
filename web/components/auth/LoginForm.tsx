@@ -23,7 +23,7 @@ export function LoginForm({ configured }: LoginFormProps) {
       const { error: signInError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/company`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/discover`,
         },
       });
       if (signInError) {
