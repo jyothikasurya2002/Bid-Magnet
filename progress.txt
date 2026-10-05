@@ -247,6 +247,11 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-05  Frontend (jyothika/frontend): "Can you bid, and how will you be
+              scored?" breakdown (must-meet / formula / judgement, for every
+              tender), search across all open tenders, FRONTEND_GUIDE.md.
+              Checked: Miguel's app runs entirely on our backend; every column
+              it uses exists.
   2026-10-05  Frontend: own branch jyothika/frontend (copy of Miguel's app, his
               branch untouched); team colour palette applied; new "Bid with a
               partner" panel on the tender decision page (partner finder).

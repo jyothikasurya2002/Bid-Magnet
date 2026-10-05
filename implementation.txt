@@ -183,8 +183,14 @@ FRONTEND (web/, Next.js 16 + supabase-js + OpenAI; built by Miguel)
   (canvas #efeee6, surface #f8f7f1, accent #0a4a3a, dark #30361f, text #111410);
   PartnersPanel (components/pipeline/PartnersPanel.tsx, lib/partners.ts + test)
   on /pipeline/[id], fed by rpc partner_candidates in app/pipeline/[id]/page.tsx.
-- Not used by the UI yet: competitor_stats, bidder_history, tender_bids,
-  search_tenders.
+  BidBreakdown (components/pipeline/BidBreakdown.tsx, lib/breakdown.ts + test):
+  checklist mode (citations -> pdf url#page) or notice mode (tender_criteria
+  OBJ/SUBJ + tender_requirements). SearchAllTenders in Discover (rpc
+  search_tenders, lib/search-all.ts + test). FRONTEND_GUIDE.md explains the app.
+- Vitest alias '@' breaks because the repo path ends with a space; tests use
+  relative imports.
+- Not used by the UI yet: competitor_stats, bidder_history, tender_bids.
+  Placeholders in nav: Bid prep, Outcomes.
 
 NEXT (not done)
 - Frontend (Next.js, 7 screens: profile, feed, tender page, checklist, price
