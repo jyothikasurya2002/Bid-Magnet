@@ -247,6 +247,9 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-05  Architecture diagram for the presentation: architecture.svg /
+              architecture.png (application, intelligence, data, sources,
+              cross-cutting).
   2026-10-05  Frontend (jyothika/frontend): "Can you bid, and how will you be
               scored?" breakdown (must-meet / formula / judgement, for every
               tender), search across all open tenders, FRONTEND_GUIDE.md.

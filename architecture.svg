@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 730" role="img" aria-label="BidMagnet architecture: public tender sources feed a daily pipeline into an EU Supabase database; intelligence (fit score, matching by meaning, bid breakdown, partners) runs on that data; a Next.js web app serves SME bid teams; security, EU hosting and cited AI apply across all layers." font-family="'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#f2f1ea"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1200" height="730" fill="#1f4a3a"/>
+
+  <!-- user -->
+  <rect x="360" y="14" width="220" height="40" rx="6" fill="#f2f1ea"/>
+  <text x="470" y="39" text-anchor="middle" font-size="14" font-weight="600" fill="#1f4a3a">SME bid team · browser</text>
+  <line x1="470" y1="54" x2="470" y2="128" stroke="#f2f1ea" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- legend -->
+  <line x1="690" y1="34" x2="730" y2="34" stroke="#f2f1ea" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="738" y="38" font-size="11.5" fill="#b9c9be">PDFs read on demand by the AI chat</text>
+
+  <!-- APPLICATION -->
+  <rect x="40" y="90" width="860" height="140" rx="10" fill="none" stroke="#a9bfb2" stroke-width="1.2" stroke-dasharray="6 5"/>
+  <text x="60" y="116" font-size="12" font-weight="700" letter-spacing="2.4" fill="#f2f1ea">APPLICATION</text>
+  <text x="880" y="116" text-anchor="end" font-size="12" fill="#b9c9be">Next.js web app · hosted on Vercel</text>
+  <g fill="#f2f1ea">
+    <rect x="60" y="130" width="200" height="78" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="160" y="164" text-anchor="middle" font-size="14" font-weight="600">Discover feed</text>
+    <text x="160" y="184" text-anchor="middle" font-size="12" fill="#c9d6cd">+ swipe triage</text>
+    <rect x="280" y="130" width="200" height="78" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="380" y="164" text-anchor="middle" font-size="14" font-weight="600">“Should we bid?”</text>
+    <text x="380" y="184" text-anchor="middle" font-size="12" fill="#c9d6cd">decision page + Ask AI</text>
+    <rect x="500" y="130" width="200" height="78" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="600" y="164" text-anchor="middle" font-size="14" font-weight="600">Login</text>
+    <text x="600" y="184" text-anchor="middle" font-size="12" fill="#c9d6cd">Supabase Auth · email link</text>
+    <rect x="720" y="130" width="160" height="78" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="800" y="164" text-anchor="middle" font-size="14" font-weight="600">Company profile</text>
+    <text x="800" y="184" text-anchor="middle" font-size="12" fill="#c9d6cd">+ document vault</text>
+  </g>
+
+  <!-- INTELLIGENCE -->
+  <rect x="40" y="250" width="860" height="180" rx="10" fill="none" stroke="#a9bfb2" stroke-width="1.2" stroke-dasharray="6 5"/>
+  <text x="60" y="276" font-size="12" font-weight="700" letter-spacing="2.4" fill="#f2f1ea">INTELLIGENCE</text>
+  <text x="860" y="276" text-anchor="end" font-size="12" fill="#b9c9be">runs inside the database + AI services</text>
+  <g fill="#f2f1ea">
+    <rect x="60" y="290" width="190" height="70" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="155" y="320" text-anchor="middle" font-size="14" font-weight="600">Fit score 0–100</text>
+    <text x="155" y="340" text-anchor="middle" font-size="12" fill="#c9d6cd">with reasons and gaps</text>
+    <rect x="266" y="290" width="190" height="70" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="361" y="320" text-anchor="middle" font-size="14" font-weight="600">Matching by meaning</text>
+    <text x="361" y="340" text-anchor="middle" font-size="12" fill="#c9d6cd">pgvector similarity</text>
+    <rect x="472" y="290" width="190" height="70" rx="6" fill="#f2f1ea"/>
+    <text x="567" y="316" text-anchor="middle" font-size="14" font-weight="700" fill="#1f4a3a">Bid breakdown</text>
+    <text x="567" y="335" text-anchor="middle" font-size="12" fill="#1f4a3a">must-meet · formula ·</text>
+    <text x="567" y="351" text-anchor="middle" font-size="12" fill="#1f4a3a">judgement · page-cited</text>
+    <rect x="678" y="290" width="180" height="70" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="768" y="320" text-anchor="middle" font-size="13.5" font-weight="600">Partners &amp; rivals</text>
+    <text x="768" y="340" text-anchor="middle" font-size="12" fill="#c9d6cd">who wins similar work</text>
+    <rect x="60" y="375" width="240" height="42" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="180" y="401" text-anchor="middle" font-size="12.5">Free AI model · embeddings</text>
+    <rect x="320" y="375" width="538" height="42" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="589" y="401" text-anchor="middle" font-size="12.5">OpenAI · tender chat, summaries, reading certificates</text>
+  </g>
+
+  <!-- DATA -->
+  <rect x="40" y="450" width="860" height="150" rx="10" fill="none" stroke="#a9bfb2" stroke-width="1.2" stroke-dasharray="6 5"/>
+  <text x="60" y="476" font-size="12" font-weight="700" letter-spacing="2.4" fill="#f2f1ea">DATA</text>
+  <text x="860" y="476" text-anchor="end" font-size="12" fill="#b9c9be">refreshed every morning · 07:30</text>
+  <g fill="#f2f1ea">
+    <rect x="60" y="490" width="220" height="72" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="170" y="515" text-anchor="middle" font-size="14" font-weight="600">Daily pipeline</text>
+    <text x="170" y="534" text-anchor="middle" font-size="12" fill="#c9d6cd">Python · GitHub Actions</text>
+    <text x="170" y="551" text-anchor="middle" font-size="11.5" fill="#c9d6cd">fetch → clean → IT filter → load</text>
+    <rect x="300" y="490" width="440" height="72" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="520" y="515" text-anchor="middle" font-size="14" font-weight="600">Supabase Postgres · EU (Ireland)</text>
+    <text x="520" y="534" text-anchor="middle" font-size="12" fill="#c9d6cd">23,000+ IT tenders · 27,000 awards · 5,000 winning companies</text>
+    <text x="520" y="551" text-anchor="middle" font-size="12" fill="#c9d6cd">every bidder's price &amp; score · checklists · embeddings</text>
+    <rect x="760" y="490" width="120" height="72" rx="6" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="820" y="522" text-anchor="middle" font-size="13" font-weight="600">Private storage</text>
+    <text x="820" y="541" text-anchor="middle" font-size="12" fill="#c9d6cd">company docs</text>
+  </g>
+  <text x="330" y="588" font-size="11.5" fill="#b9c9be">only changed tenders are rewritten · 171 MB of 500 MB</text>
+
+  <!-- PUBLIC SOURCES -->
+  <text x="60" y="640" font-size="12" font-weight="700" letter-spacing="2.4" fill="#f2f1ea">PUBLIC SOURCES</text>
+  <g fill="#f2f1ea">
+    <rect x="60" y="652" width="220" height="52" rx="6" fill="none" stroke="#f2f1ea"/>
+    <text x="170" y="674" text-anchor="middle" font-size="13.5" font-weight="600">PLACSP national feed</text>
+    <text x="170" y="692" text-anchor="middle" font-size="11.5" fill="#c9d6cd">official open data · XML</text>
+    <rect x="300" y="652" width="280" height="52" rx="6" fill="none" stroke="#f2f1ea"/>
+    <text x="440" y="674" text-anchor="middle" font-size="13.5" font-weight="600">Regional platforms</text>
+    <text x="440" y="692" text-anchor="middle" font-size="11.5" fill="#c9d6cd">Catalonia, Basque Country, Navarre…</text>
+    <rect x="600" y="652" width="280" height="52" rx="6" fill="none" stroke="#f2f1ea"/>
+    <text x="740" y="674" text-anchor="middle" font-size="13.5" font-weight="600">Tender PDFs &amp; award reports</text>
+    <text x="740" y="692" text-anchor="middle" font-size="11.5" fill="#c9d6cd">public documents</text>
+  </g>
+
+  <!-- flows -->
+  <g stroke="#f2f1ea" stroke-width="1.5" fill="none">
+    <line x1="230" y1="208" x2="230" y2="288" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <line x1="464" y1="208" x2="464" y2="373" marker-end="url(#arr)"/>
+    <line x1="874" y1="208" x2="874" y2="488" marker-end="url(#arr)"/>
+    <line x1="310" y1="488" x2="310" y2="362" marker-end="url(#arr)" marker-start="url(#arr)"/>
+    <line x1="180" y1="488" x2="180" y2="419" marker-end="url(#arr)"/>
+    <line x1="280" y1="526" x2="298" y2="526" marker-end="url(#arr)"/>
+    <line x1="250" y1="650" x2="250" y2="564" marker-end="url(#arr)"/>
+    <line x1="400" y1="650" x2="270" y2="565" marker-end="url(#arr)"/>
+    <line x1="680" y1="650" x2="680" y2="564" marker-end="url(#arr)"/>
+    <polyline points="880,678 892,678 892,396 860,396" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+  </g>
+  <g font-size="11.5" fill="#dfe7e2">
+    <text x="238" y="244">supabase-js · signed-in only</text>
+    <text x="472" y="244">Ask AI · server route</text>
+    <text x="478" y="80">https</text>
+    <text x="188" y="443">embeds new tenders</text>
+    <text x="318" y="443">scores computed in the database</text>
+    <text x="258" y="616">XML, daily</text>
+    <text x="360" y="616">same format</text>
+    <text x="688" y="616">checklists · bid results</text>
+    <text x="866" y="244" text-anchor="end">uploads (private)</text>
+  </g>
+
+  <!-- CROSS-CUTTING -->
+  <rect x="930" y="90" width="230" height="614" rx="10" fill="none" stroke="#a9bfb2" stroke-width="1.2" stroke-dasharray="6 5"/>
+  <g transform="translate(1045 128)" fill="none" stroke="#f2f1ea" stroke-width="1.6">
+    <path d="M-7,0 V-6 a7,7 0 0 1 14,0 V0"/>
+    <rect x="-10" y="0" width="20" height="15" rx="2.5"/>
+  </g>
+  <text x="1045" y="172" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="2.4" fill="#f2f1ea">CROSS-CUTTING</text>
+  <g fill="#f2f1ea">
+    <text x="950" y="214" font-size="13" font-weight="600">EU hosting</text>
+    <text x="950" y="232" font-size="11.5" fill="#c9d6cd">database + files in Ireland</text>
+    <text x="950" y="268" font-size="13" font-weight="600">Row-level security</text>
+    <text x="950" y="286" font-size="11.5" fill="#c9d6cd">each company sees only</text>
+    <text x="950" y="302" font-size="11.5" fill="#c9d6cd">its own data and documents</text>
+    <text x="950" y="338" font-size="13" font-weight="600">Cited AI</text>
+    <text x="950" y="356" font-size="11.5" fill="#c9d6cd">every answer links to its</text>
+    <text x="950" y="372" font-size="11.5" fill="#c9d6cd">source page, auto-checked</text>
+    <text x="950" y="408" font-size="13" font-weight="600">Secrets stay on the server</text>
+    <text x="950" y="426" font-size="11.5" fill="#c9d6cd">never in the browser</text>
+    <text x="950" y="462" font-size="13" font-weight="600">GDPR by design</text>
+    <text x="950" y="480" font-size="11.5" fill="#c9d6cd">public data + documents the</text>
+    <text x="950" y="496" font-size="11.5" fill="#c9d6cd">company chooses to upload</text>
+    <text x="950" y="532" font-size="13" font-weight="600">Daily automation</text>
+    <text x="950" y="550" font-size="11.5" fill="#c9d6cd">GitHub Actions · emails</text>
+    <text x="950" y="566" font-size="11.5" fill="#c9d6cd">the team if a run fails</text>
+    <line x1="950" y1="604" x2="1140" y2="604" stroke="#a9bfb2" stroke-width="0.8"/>
+    <text x="950" y="628" font-size="11" fill="#b9c9be">Today the AI chat uses OpenAI (US);</text>
+    <text x="950" y="644" font-size="11" fill="#b9c9be">an EU-hosted model is the plan</text>
+    <text x="950" y="660" font-size="11" fill="#b9c9be">for production.</text>
+  </g>
+</svg>
