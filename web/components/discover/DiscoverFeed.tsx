@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import { FilterBar } from "./FilterBar";
 import { FocusMode } from "./FocusMode";
 import { TenderPane } from "./TenderPane";
+import { SearchAllTenders } from "./SearchAllTenders";
 import { dateFormat, SPAIN_TIME } from "@/lib/dates";
 
 type DiscoverFeedProps = {
@@ -297,6 +298,10 @@ export function DiscoverFeed({
                       ? "No contracts in your sectors and regions end in the next nine months."
                       : "No prior notices in your sectors right now."}
             </div>
+          ) : null}
+
+          {tab === "open" ? (
+            <SearchAllTenders query={filters.query} matchedIds={open.map((tender) => tender.tender_id)} />
           ) : null}
         </div>
       </div>

@@ -6056,3 +6056,63 @@ a.chat-cite:hover {
   background: var(--warning-surface);
   color: var(--warning);
 }
+
+/* Discover: open tenders matching the search outside the profile matches */
+.search-all {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--divider);
+}
+
+.search-all-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.search-all-aside {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.search-all-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-all-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.search-all-row:hover {
+  background: var(--surface);
+}
+
+.search-all-name {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-all-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
