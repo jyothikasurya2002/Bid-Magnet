@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { PartnersPanel } from "./PartnersPanel";
+import type { PartnerCandidate } from "@/lib/partners";
 import { useState, useSyncExternalStore } from "react";
 import { TenderSummaryBlock } from "@/components/discover/TenderSummaryBlock";
 import { businessDaysUntil, isStillOpen, reasonLabel, type Decision } from "@/lib/discover";
@@ -25,7 +27,15 @@ const CHOICES: Array<{ value: Decision; label: string }> = [
 const subscribeNothing = () => () => {};
 
 // 3a: score, buyer, rivals and price in one view, with the AI chat alongside.
-export function TenderDecision({ data, openChat }: { data: DecisionData; openChat: boolean }) {
+export function TenderDecision({
+  data,
+  openChat,
+  partners = [],
+}: {
+  data: DecisionData;
+  openChat: boolean;
+  partners?: PartnerCandidate[];
+}) {
   const { tender } = data;
   const [decision, setDecision] = useState<Decision | null>(data.decision);
   const [saving, setSaving] = useState(false);
@@ -135,6 +145,7 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
           <BuyerPanel data={data} />
           <RivalsPanel rivals={data.rivals} similarCount={data.similarCount} hasBuyer={Boolean(data.buyer)} />
           <PricePanel data={data} />
+          <PartnersPanel partners={partners} gaps={data.reasons.filter((reason) => reason.type === "gap").length} />
         </div>
       </main>
 

@@ -5858,3 +5858,64 @@ a.chat-cite:hover {
   width: 10px;
   color: var(--text-muted);
 }
+
+/* Bid with a partner (pipeline decision page) */
+.dec-partners {
+  grid-column: 1 / -1;
+}
+
+.dec-partner-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dec-partner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--divider-subtle);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.dec-partner-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dec-partner-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dec-partner-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--success-surface);
+  color: var(--success-text);
+  font-size: 11px;
+}
+
+.dec-partner-detail {
+  color: var(--text-body);
+  font-family: var(--font-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 11px;
+}
+
+.dec-partner-example {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
