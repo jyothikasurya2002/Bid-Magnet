@@ -1,4 +1,5 @@
 import { durationLabel, sourceLabel, type Decision } from "./discover";
+import type { TrackRecord } from "./award-history";
 import type { MatchReason } from "./types";
 
 // Evidence for the bid / no-bid view: the buyer's past prices and who wins this kind of work.
@@ -114,6 +115,8 @@ export type DecisionData = {
   decision: Decision | null;
   score: number | null;
   reasons: MatchReason[];
+  // Why there's no fit score, when there isn't one.
+  noScore: { kind: "closed" } | { kind: "size"; min: number | null; max: number | null } | { kind: "no_match" } | null;
   buyer: {
     itTenders: number;
     awards: number;
@@ -138,6 +141,8 @@ export type DecisionData = {
   priceNote: string | null;
   abnormallyLow: string | null;
   documents: Array<{ kind: string; name: string; url: string }>;
+  // null when the profile has no tax ID to look up
+  trackRecord: TrackRecord | null;
 };
 
 export type BuyerStats = {
@@ -154,6 +159,8 @@ export type Criterion = { type: string | null; subtype: string | null; weight: n
 export type DecisionInput = {
   companyId: string;
   companyNif: string | null;
+  companyBudget: [number | null, number | null];
+  today: string;
   tender: {
     id: string;
     title: string;
@@ -176,6 +183,7 @@ export type DecisionInput = {
   criteria: Criterion[];
   price: { formula_explained_en?: string; abnormally_low_rule?: string } | null;
   documents: Array<{ kind: string; name: string; url: string }>;
+  trackRecord: TrackRecord | null;
 };
 
 // Everything the bid / no-bid view shows, from the raw rows.
@@ -208,6 +216,18 @@ export function assembleDecision(input: DecisionInput): DecisionData {
   const sameBuyer = similar.find((row) => row.buyer_name === tender.buyer_name);
   const stats = input.buyer;
 
+  // match_tenders only scores open tenders inside the profile's contract size range
+  // that match its sectors, keywords or description.
+  const budget = Number(tender.budget_no_tax) || null;
+  const [min, max] = input.companyBudget;
+  const noScore: DecisionData["noScore"] = input.match
+    ? null
+    : tender.deadline_date && tender.deadline_date.slice(0, 10) < input.today
+      ? { kind: "closed" }
+      : budget !== null && ((min !== null && budget < min) || (max !== null && budget > max))
+        ? { kind: "size", min, max }
+        : { kind: "no_match" };
+
   return {
     companyId: input.companyId,
     tender: {
@@ -226,6 +246,7 @@ export function assembleDecision(input: DecisionInput): DecisionData {
     decision: input.decision,
     score: input.match?.score ?? null,
     reasons: input.match?.reasons ?? [],
+    noScore,
     buyer: stats
       ? {
           itTenders: Number(stats.it_tenders),
@@ -254,5 +275,6 @@ export function assembleDecision(input: DecisionInput): DecisionData {
     priceNote: input.price?.formula_explained_en ?? null,
     abnormallyLow: input.price?.abnormally_low_rule ?? null,
     documents: input.documents,
+    trackRecord: input.trackRecord,
   };
 }

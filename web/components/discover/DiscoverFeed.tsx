@@ -7,6 +7,7 @@ import {
   closesLabel,
   DEFAULT_FILTERS,
   euroShort,
+  filterSummary,
   sortTenders,
   sourceLabel,
   TRIAGE_BATCH,
@@ -60,8 +61,8 @@ export function DiscoverFeed({
   const [sort, setSort] = useState<Sort>("fit");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [paneOpen, setPaneOpen] = useState(true);
-  // Triage queue, fixed when focus mode opens so deciding doesn't reshuffle it.
-  const [focusQueue, setFocusQueue] = useState<FeedTender[] | null>(null);
+  // Triage runs on the same filters and sort as the list.
+  const [focus, setFocus] = useState(false);
   const [error, setError] = useState("");
 
   const everything = [...open, ...renewals, ...signals];
@@ -133,15 +134,30 @@ export function DiscoverFeed({
       ? "contracts of any size"
       : `${euroShort(budget[0] ?? 0)} – ${budget[1] === null ? "no limit" : euroShort(budget[1])}`;
 
-  if (focusQueue) {
+  const filterBarProps = {
+    filters,
+    onChange: setFilters,
+    sort,
+    onSort: setSort,
+    regions: regionOptions,
+    myRegions,
+    platforms: platformOptions,
+    count: (next: Filters) => applyFilters(undecided, next, myRegions).length,
+    profileBudget: budgetLabel,
+  };
+
+  if (focus) {
     return (
       <div className="discover discover-focus">
         <FocusMode
-          queue={focusQueue}
+          queue={lists.open}
+          queueKey={JSON.stringify([filters, sort])}
+          filterBar={<FilterBar {...filterBarProps} />}
+          filterSummary={filterSummary(filters, sort)}
           onDecide={(id, decision, reason) => void decide(id, decision, reason)}
-          onExit={() => setFocusQueue(null)}
+          onExit={() => setFocus(false)}
           onShowInterested={() => {
-            setFocusQueue(null);
+            setFocus(false);
             setTab("interested");
             setSelectedId(null);
             setPaneOpen(true);
@@ -178,22 +194,14 @@ export function DiscoverFeed({
 
           {tab === "open" ? (
             <FilterBar
-              filters={filters}
-              onChange={setFilters}
-              sort={sort}
-              onSort={setSort}
-              regions={regionOptions}
-              myRegions={myRegions}
-              platforms={platformOptions}
-              count={(next) => applyFilters(undecided, next, myRegions).length}
-              profileBudget={budgetLabel}
+              {...filterBarProps}
               aside={
                 <>
                   {lists.open.length ? (
                     <button
                       type="button"
                       className="swipe-launch"
-                      onClick={() => setFocusQueue(lists.open)}
+                      onClick={() => setFocus(true)}
                       title="Goes through the list in the order chosen in Sort"
                     >
                       <span className="swipe-launch-icon" aria-hidden="true">

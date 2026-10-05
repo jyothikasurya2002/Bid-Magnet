@@ -1,8 +1,6 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { CompanyLedger } from "@/components/company/CompanyLedger";
-import { companyFromRow } from "@/lib/profile";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { requireCompany } from "@/lib/company-server";
 import type { CompanyDocument } from "@/lib/types";
 
 export const metadata = {
@@ -10,24 +8,8 @@ export const metadata = {
 };
 
 export default async function Page() {
-  if (!isSupabaseConfigured()) redirect("/login");
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data } = await supabase
-    .from("companies")
-    .select("*")
-    .eq("owner", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  // New users start on the welcome page, which creates the company and researches it.
-  if (!data) redirect("/welcome");
-  const company = companyFromRow(data);
+  // New users are sent to the welcome page, which creates the company and researches it.
+  const { supabase, user, company } = await requireCompany();
 
   const { data: rows } = await supabase
     .from("company_documents")

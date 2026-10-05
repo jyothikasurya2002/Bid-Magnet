@@ -19,11 +19,15 @@ export function planResearchFill(company: CompanyProfile, result: ImportResult):
 
   for (const suggestion of result.suggestions) {
     const field = suggestion.field;
+    if (!suggestion.value_text.trim() && !suggestion.values.length) continue; // never blank a field
     const automatic =
       suggestion.evidence_state !== "conflict" &&
       field !== "website_url" &&
       (!NEEDS_VERIFIED_QUOTE.has(field) || suggestion.verified) &&
-      !(field === "description" && next.description.trim());
+      !(field === "description" && next.description.trim()) &&
+      // A size range hides tenders outside it, so it's always the user's call.
+      field !== "min_budget" &&
+      field !== "max_budget";
     if (!automatic) {
       review.push(suggestion);
       continue;

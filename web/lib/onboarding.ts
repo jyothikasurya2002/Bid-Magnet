@@ -66,6 +66,7 @@ export function stepPatch(step: StepId, saved: CompanyProfile, draft: CompanyPro
   const fields = STEPS.find((item) => item.id === step)?.fields ?? [];
   const patch: Partial<CompanyProfile> = {};
   for (const field of fields) {
+    if (field === "name" && !draft.name.trim()) continue; // a company always keeps its name
     if (JSON.stringify(saved[field]) !== JSON.stringify(draft[field])) {
       Object.assign(patch, { [field]: draft[field] });
     }

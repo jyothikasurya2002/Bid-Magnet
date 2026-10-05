@@ -15,6 +15,8 @@ export type ChatEvent =
   | { type: "done"; response_id: string; documents?: ChatDocument[] }
   | { type: "error"; message: string };
 
+export type ChatTopic = { title: string; context: string };
+
 export type ChatContext = {
   tender: Record<string, unknown>;
   criteria: Array<Record<string, unknown>>;
@@ -30,7 +32,7 @@ export const DOC_LABEL: Record<string, string> = {
   ppt: "PPT",
 };
 
-const INSTRUCTIONS = `You help a small Spanish IT company understand one public tender and decide whether and how to bid.
+const INSTRUCTIONS = `You are Scout, BidMagnet's assistant. You help a small Spanish IT company understand one public tender and decide whether and how to bid.
 You have the tender's own documents (PCAP = administrative terms, PPT = technical specifications, when attached), the structured notice data, buyer statistics and the company's profile.
 
 Rules:
@@ -55,7 +57,7 @@ function compactChecklist(checklist: Record<string, unknown> | null) {
   return checklist ? Object.fromEntries(Object.entries(checklist).filter(([name]) => !name.startsWith("_"))) : null;
 }
 
-async function* openingInput(context: ChatContext, question: string, history: ChatTurn[]) {
+async function* openingInput(context: ChatContext, question: string, history: ChatTurn[], topic: ChatTopic | null) {
   const documents = pickDocuments(context.documents);
   const files: Array<{ type: "input_file"; filename: string; file_data: string }> = [];
   const read: ChatDocument[] = [];
@@ -91,7 +93,12 @@ async function* openingInput(context: ChatContext, question: string, history: Ch
           }`,
         },
         ...files,
-        { type: "input_text", text: `${transcript}Question: ${question}` },
+        {
+          type: "input_text",
+          text: `${
+            topic ? `This conversation is about one part of the bid: ${topic.title}.\n${topic.context}\nKeep answers focused on it.\n\n` : ""
+          }${transcript}Question: ${question}`,
+        },
       ],
     },
   ];
@@ -105,6 +112,7 @@ export async function* streamTenderChat(options: {
   question: string;
   previousId: string | null;
   history: ChatTurn[];
+  topic?: ChatTopic | null;
 }): AsyncGenerator<ChatEvent> {
   const client = getClient();
   let previousId = options.previousId;
@@ -113,7 +121,7 @@ export async function* streamTenderChat(options: {
     let input: string | ResponseInputItem[] = options.question;
     let read: ChatDocument[] | undefined;
     if (!previousId) {
-      const opening = openingInput(options.context, options.question, options.history);
+      const opening = openingInput(options.context, options.question, options.history, options.topic ?? null);
       let step = await opening.next();
       while (!step.done) {
         yield step.value;

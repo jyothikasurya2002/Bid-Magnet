@@ -24,7 +24,7 @@ export function TenderSummaryBlock({
         <span className="ai-summary-mark" aria-hidden="true">
           ✦
         </span>
-        <span>Summarise this tender with AI</span>
+        <span>Ask Scout to summarise this tender</span>
       </button>
     );
   }
@@ -35,7 +35,7 @@ export function TenderSummaryBlock({
         <span className="ai-summary-mark" aria-hidden="true">
           ✦
         </span>
-        <span>AI summary</span>
+        <span>Scout’s summary</span>
         {result && "summary" in result ? (
           <span className="ai-summary-basis">
             {result.summary.basis === "checklist" ? "from the notice and checked documents" : "from the tender notice"}
@@ -44,7 +44,7 @@ export function TenderSummaryBlock({
       </div>
 
       {!result ? (
-        <div className="ai-summary-loading" role="status" aria-label="Writing the summary">
+        <div className="ai-summary-loading" role="status" aria-label="Scout is writing the summary">
           <span />
           <span />
           <span />

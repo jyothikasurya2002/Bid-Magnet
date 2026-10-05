@@ -7,7 +7,8 @@ import { businessDaysUntil, isStillOpen, reasonLabel, type Decision } from "@/li
 import { tidyName, type DecisionData, type Rival } from "@/lib/pipeline";
 import { createClient } from "@/lib/supabase/client";
 import type { MatchReason } from "@/lib/types";
-import { TenderChat } from "./TenderChat";
+import { ScoutChat } from "@/components/scout/ScoutChat";
+import { ScoutLayout } from "@/components/scout/ScoutLayout";
 import { dateFormat } from "@/lib/dates";
 
 const EURO = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -23,6 +24,13 @@ const CHOICES: Array<{ value: Decision; label: string }> = [
 ];
 
 const subscribeNothing = () => () => {};
+
+const SUGGESTIONS = [
+  "What do we have to submit, and in which envelope?",
+  "Do we meet the solvency and certification requirements?",
+  "How is price scored, and what discount makes sense?",
+  "What could get our bid excluded?",
+];
 
 // 3a: score, buyer, rivals and price in one view, with the AI chat alongside.
 export function TenderDecision({ data, openChat }: { data: DecisionData; openChat: boolean }) {
@@ -58,7 +66,21 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
   }
 
   return (
-    <div className={chatOpen ? "dec-layout dec-layout-chat" : "dec-layout"}>
+    <ScoutLayout
+      open={chatOpen}
+      panel={
+        hydrated ? (
+          <ScoutChat
+            companyId={data.companyId}
+            tenderId={tender.id}
+            documents={data.documents}
+            open={chatOpen}
+            onClose={() => setChat(false)}
+            suggestions={SUGGESTIONS}
+          />
+        ) : null
+      }
+    >
       <main className="dec">
         <Link href="/pipeline" className="dec-back">
           ← Pipeline
@@ -100,7 +122,7 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
 
           <div className="dec-actions">
             <button type="button" className="dec-ask" onClick={() => setChat(!chatOpen)} aria-expanded={chatOpen}>
-              <span aria-hidden="true">✦</span> Ask AI about this tender
+              <span aria-hidden="true">✦</span> Ask Scout about this tender
             </button>
             <div className="dec-choice" role="group" aria-label="Your decision">
               {CHOICES.map((choice) => (
@@ -126,28 +148,26 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
           <p className="dec-note" role="status">
             Out of your pipeline. You’ll still find it under Dismissed in Discover.
           </p>
+        ) : decision === "go" && !closed ? (
+          <p className="dec-note dec-note-go" role="status">
+            You’re bidding on this one.{" "}
+            <Link href={`/bid/${tender.id}`} className="link-strong">
+              Open the bid plan →
+            </Link>
+          </p>
         ) : null}
 
         <TenderSummaryBlock tenderId={tender.id} compact />
 
         <div className="dec-grid">
-          <FitPanel score={data.score} reasons={data.reasons} deadline={tender.deadline} />
+          <FitPanel score={data.score} reasons={data.reasons} deadline={tender.deadline} noScore={data.noScore} budget={tender.budget} />
           <BuyerPanel data={data} />
           <RivalsPanel rivals={data.rivals} similarCount={data.similarCount} hasBuyer={Boolean(data.buyer)} />
           <PricePanel data={data} />
+          <TrackRecordPanel data={data} />
         </div>
       </main>
-
-      {hydrated ? (
-        <TenderChat
-          companyId={data.companyId}
-          tenderId={tender.id}
-          documents={data.documents}
-          open={chatOpen}
-          onClose={() => setChat(false)}
-        />
-      ) : null}
-    </div>
+    </ScoutLayout>
   );
 }
 
@@ -166,7 +186,19 @@ function factorTone(reason: MatchReason) {
   return reason.points > 0 ? "ok" : reason.points < 0 ? "warn" : "zero";
 }
 
-function FitPanel({ score, reasons, deadline }: { score: number | null; reasons: MatchReason[]; deadline: string | null }) {
+function FitPanel({
+  score,
+  reasons,
+  deadline,
+  noScore,
+  budget,
+}: {
+  score: number | null;
+  reasons: MatchReason[];
+  deadline: string | null;
+  noScore: DecisionData["noScore"];
+  budget: number | null;
+}) {
   const sorted = [...reasons].sort((a, b) => b.points - a.points);
   const largest = Math.max(1, ...reasons.map((reason) => Math.abs(reason.points)));
   return (
@@ -198,7 +230,20 @@ function FitPanel({ score, reasons, deadline }: { score: number | null; reasons:
           </ul>
         </>
       ) : (
-        <p className="dec-muted">No fit score: scores are only worked out for open tenders.</p>
+        <p className="dec-muted">
+          {noScore?.kind === "closed" ? (
+            "No fit score: this tender has closed."
+          ) : noScore?.kind === "size" ? (
+            <>
+              No fit score: its budget{budget !== null ? ` (${EURO.format(budget)})` : ""} is outside the contract sizes in
+              your profile ({noScore.min !== null ? EURO.format(noScore.min) : "no minimum"} –{" "}
+              {noScore.max !== null ? EURO.format(noScore.max) : "no limit"}), so it isn’t matched or scored.{" "}
+              <Link href="/company#fact-budget">Change sizes</Link>
+            </>
+          ) : (
+            "No fit score: it doesn’t match your sector codes, keywords or description closely enough to be scored."
+          )}
+        </p>
       )}
     </Panel>
   );
@@ -333,6 +378,60 @@ function PricePanel({ data }: { data: DecisionData }) {
             </p>
           ) : null}
         </div>
+      ) : null}
+    </Panel>
+  );
+}
+
+// Your own awards (by NIF) against this tender: buyer history, experience rule, pricing.
+function TrackRecordPanel({ data }: { data: DecisionData }) {
+  const record = data.trackRecord;
+  const buyerDiscount = data.buyer?.medianDiscount ?? data.medianDiscount;
+  return (
+    <Panel title="Your track record" className="dec-track">
+      {!record ? (
+        <p className="dec-muted">
+          Add your NIF on the <Link href="/company#fact-nif">Company page</Link> to compare this tender with contracts you’ve won.
+        </p>
+      ) : !record.tenders ? (
+        <p className="dec-muted">No contracts won under your NIF in our records (Jan–Sep 2026). Joint ventures (UTEs) have their own NIF.</p>
+      ) : (
+        <ul className="dec-track-list">
+          <li className={record.atBuyer ? "dec-track-good" : undefined}>
+            <strong>This buyer</strong>
+            <span>
+              {record.atBuyer
+                ? `You've won ${record.atBuyer.count} contract${record.atBuyer.count === 1 ? "" : "s"} here${record.atBuyer.last ? `, last on ${LONG.format(new Date(record.atBuyer.last))}` : ""}.`
+                : "You haven't won from this buyer yet."}
+            </span>
+          </li>
+          {record.experience ? (
+            <li className={record.experience.meets === false ? "dec-track-warn" : record.experience.meets ? "dec-track-good" : undefined}>
+              <strong>Experience</strong>
+              <span>
+                {record.experience.similar
+                  ? `${record.experience.similar} similar contract${record.experience.similar === 1 ? "" : "s"} won (same sector codes), about ${EURO.format(record.experience.yearly)} a year.`
+                  : "No similar contracts (same sector codes) in your awards."}
+                {record.experience.needed !== null
+                  ? ` The usual rule asks for ${EURO.format(record.experience.needed)} a year (70% of this contract's yearly value).`
+                  : ""}
+              </span>
+            </li>
+          ) : null}
+          {record.discount ? (
+            <li>
+              <strong>Your pricing</strong>
+              <span>
+                You usually win at {pct(record.discount.median)} below budget ({record.discount.sample} award
+                {record.discount.sample === 1 ? "" : "s"})
+                {buyerDiscount !== null ? `; winners here average ${pct(buyerDiscount)}.` : "."}
+              </span>
+            </li>
+          ) : null}
+        </ul>
+      )}
+      {record?.tenders ? (
+        <p className="dec-foot">From public award records, Jan–Sep 2026 only. Tenders usually look at your last 3 years.</p>
       ) : null}
     </Panel>
   );

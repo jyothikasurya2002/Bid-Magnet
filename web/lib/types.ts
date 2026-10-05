@@ -50,7 +50,9 @@ export type ImportSuggestion = {
     | "keywords"
     | "cpv_prefixes"
     | "regions"
-    | "certifications";
+    | "certifications"
+    | "min_budget"
+    | "max_budget";
   value_text: string;
   values: string[];
   evidence_state: EvidenceState;

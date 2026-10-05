@@ -32,6 +32,7 @@ import {
 } from "@/lib/types";
 import { DocumentsStep } from "./DocumentsStep";
 import { CertificationsStep, FinancesStep, RegistrationsStep, WhatStep, WhereStep, type StepProps } from "./steps";
+import { COMPANY_NIF } from "@/lib/award-history";
 
 type OnboardingProps = {
   initialCompany: CompanyProfile | null;
@@ -44,6 +45,16 @@ type OnboardingProps = {
 function withProtocol(website: string) {
   const trimmed = website.trim();
   return trimmed && !/^https?:\/\//i.test(trimmed) ? `https://${trimmed}` : trimmed;
+}
+
+// Research and award records can both back the same field; keep every source.
+function appendSources(current: Sources, added: Sources) {
+  const next = { ...current };
+  for (const [field, items] of Object.entries(added)) {
+    const key = field as keyof Sources;
+    next[key] = [...(next[key] ?? []), ...(items ?? [])];
+  }
+  return next;
 }
 
 function hostOf(url: string) {
@@ -298,14 +309,43 @@ function Flow({ initial, userId, documents, fresh = false, resume }: FlowProps) 
     onDone: (result) => {
       const merged = mergeResearch(draftRef.current, touchedRef.current, result);
       setDraft(merged.next);
-      setSources((current) => ({ ...current, ...merged.sources }));
-      setReview(merged.review);
+      setSources((current) => appendSources(current, merged.sources));
+      setReview((current) => [...current, ...merged.review]);
       setFoundCount(merged.found);
       void saveFields(merged.patch);
       // Show "Found N facts" for a moment, then start the steps.
       window.setTimeout(() => setPhase((current) => (current === "setup" ? "steps" : current)), 1100);
     },
   });
+  // Once we know the tax ID (found by research or typed in), the public award
+  // records fill in sectors, regions and contract size. One lookup per NIF.
+  const historyNif = useRef<string | null>(null);
+  const nif = draft.nif.replace(/[\s.-]/g, "").toUpperCase();
+  useEffect(() => {
+    if (!COMPANY_NIF.test(nif) || historyNif.current === nif) return;
+    historyNif.current = nif;
+    void fetch(`/api/company/award-history?nif=${encodeURIComponent(nif)}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { suggestions: ImportSuggestion[] } | null) => {
+        if (!body?.suggestions.length) return;
+        const merged = mergeResearch(draftRef.current, touchedRef.current, {
+          canonical_url: "",
+          legal_name: null,
+          ambiguous: false,
+          sources: [],
+          not_found: [],
+          suggestions: body.suggestions,
+        });
+        setDraft(merged.next);
+        setSources((current) => appendSources(current, merged.sources));
+        setReview((current) => [...current, ...merged.review]);
+        void saveFields(merged.patch);
+      })
+      .catch(() => {
+        historyNif.current = null; // try again next time
+      });
+  }, [nif, saveFields]);
+
   const researching = job.state.kind === "running";
   const now = useNow(researching);
   const elapsed = job.state.kind === "running" ? now - job.state.startedAt : 0;

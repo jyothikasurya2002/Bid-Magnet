@@ -1,9 +1,10 @@
-import { redirect } from "next/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { AppShell } from "@/components/AppShell";
 import { DiscoverFeed } from "@/components/discover/DiscoverFeed";
 import { isStillOpen, matchesSectors, todayInSpain, type Decision, type FeedTender } from "@/lib/discover";
-import { companyFromRow } from "@/lib/profile";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { summarizeAwards, withTrackRecord } from "@/lib/award-history";
+import { requireCompany } from "@/lib/company-server";
+import { companyAwards, companyMatches, rowsForTenders, sharedList } from "@/lib/data-cache";
 import type { MatchReason } from "@/lib/types";
 
 export const metadata = {
@@ -60,77 +61,26 @@ function dateWindow(now = new Date()) {
   };
 }
 
-export default async function DiscoverPage() {
-  if (!isSupabaseConfigured()) redirect("/login");
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+type DetailRow = Pick<TenderRow, "id" | "source" | "link" | "duration" | "duration_unit" | "deadline_time"> & {
+  it_segment: string | null;
+  contract_type_label: string | null;
+  has_lots: boolean | null;
+  buyer_nif: string | null;
+};
+type CriterionRow = { tender_id: string; type: string | null; subtype: string | null; weight: number | null; lot_id: string | null };
 
-  const { data: companyRow } = await supabase
-    .from("companies")
-    .select("*")
-    .eq("owner", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (!companyRow) redirect("/welcome");
-  const company = companyFromRow(companyRow);
+async function loadDetails(supabase: SupabaseClient, ids: string[]) {
+  const { data, error } = await supabase
+    .from("tenders")
+    .select("id,source,link,duration,duration_unit,deadline_time,it_segment,contract_type_label,has_lots,buyer_nif")
+    .in("id", ids);
+  if (error) throw new Error(error.message);
+  return (data || []) as DetailRow[];
+}
 
-  const { today, inNineMonths, since } = dateWindow();
-
-  const [matches, decisions, renewals, signals, latest] = await Promise.all([
-    supabase.rpc("match_tenders", { p_company: company.id, p_limit: 300 }),
-    supabase.from("tender_decisions").select("tender_id,decision").eq("company_id", company.id),
-    supabase
-      .from("upcoming_renewals")
-      .select("tender_id,title,buyer_name,region,cpv_codes,incumbent,award_amount_no_tax,estimated_end,duration,duration_unit")
-      .gte("estimated_end", today)
-      .lte("estimated_end", inNineMonths)
-      .order("estimated_end")
-      .limit(1500),
-    supabase
-      .from("tenders")
-      .select(`${TENDER_FIELDS},cpv_codes`)
-      .eq("status", "PRE")
-      .not("it_segment", "is", null)
-      .gte("updated", since)
-      .limit(300),
-    supabase.from("tenders").select("ingested_at").order("ingested_at", { ascending: false }).limit(1).maybeSingle(),
-  ]);
-
-  if (matches.error) throw new Error(`Could not load your matches: ${matches.error.message}`);
-
-  // Fields match_tenders doesn't return.
-  const matchRows = (matches.data || []) as Array<Omit<FeedTender, "source" | "duration" | "duration_unit" | "deadline_time" | "kind"> & { reasons: MatchReason[] }>;
-  const decided = new Map<string, Decision>(
-    (decisions.data || []).map((row: { tender_id: string; decision: Decision }) => [row.tender_id, row.decision]),
-  );
-  const matchIds = new Set(matchRows.map((row) => row.tender_id));
-  const extraIds = [...decided.keys()].filter((id) => !matchIds.has(id));
-
-  const [details, decidedRows] = await Promise.all([
-    matchRows.length
-      ? supabase
-          .from("tenders")
-          .select("id,source,link,duration,duration_unit,deadline_time,it_segment,contract_type_label,has_lots")
-          .in("id", [...matchIds])
-      : Promise.resolve({ data: [] }),
-    extraIds.length
-      ? supabase.from("tenders").select(TENDER_FIELDS).in("id", extraIds)
-      : Promise.resolve({ data: [] }),
-  ]);
-  type DetailRow = Pick<TenderRow, "id" | "source" | "link" | "duration" | "duration_unit" | "deadline_time"> & {
-    it_segment: string | null;
-    contract_type_label: string | null;
-    has_lots: boolean | null;
-  };
-  const detail = new Map(((details.data || []) as DetailRow[]).map((row) => [row.id, row]));
-
-  // Award criteria, for the "how it's scored" filter. Batched to stay under the row limit.
-  const ids = [...matchIds];
-  const criteriaBatches = await Promise.all(
+// Award criteria, for the "how it's scored" filter. Batched to stay under the row limit.
+async function loadCriteria(supabase: SupabaseClient, ids: string[]) {
+  const batches = await Promise.all(
     Array.from({ length: Math.ceil(ids.length / 40) }, (_, batch) =>
       supabase
         .from("tender_criteria")
@@ -138,9 +88,66 @@ export default async function DiscoverPage() {
         .in("tender_id", ids.slice(batch * 40, batch * 40 + 40)),
     ),
   );
-  type CriterionRow = { tender_id: string; type: string | null; subtype: string | null; weight: number | null; lot_id: string | null };
+  const failed = batches.find((batch) => batch.error);
+  if (failed?.error) throw new Error(failed.error.message);
+  return batches.flatMap((batch) => (batch.data || []) as CriterionRow[]);
+}
+
+export default async function DiscoverPage() {
+  const { supabase, user, company } = await requireCompany();
+  const { today, inNineMonths, since } = dateWindow();
+
+  // Shared lists and your matches come from the cache; your decisions are always fresh.
+  type MatchRow = Omit<FeedTender, "source" | "duration" | "duration_unit" | "deadline_time" | "kind"> & { reasons: MatchReason[] };
+  const [matchRows, decisions, renewals, signals, latest, awards] = await Promise.all([
+    companyMatches<MatchRow>(supabase, company.id!, company.updated_at, 300),
+    supabase.from("tender_decisions").select("tender_id,decision").eq("company_id", company.id),
+    sharedList(supabase, `renewals:${today}`, async (reader) => {
+      const { data, error } = await reader
+        .from("upcoming_renewals")
+        .select("tender_id,title,buyer_name,region,cpv_codes,incumbent,award_amount_no_tax,estimated_end,duration,duration_unit")
+        .gte("estimated_end", today)
+        .lte("estimated_end", inNineMonths)
+        .order("estimated_end")
+        .limit(1500);
+      if (error) throw new Error(error.message);
+      return data || [];
+    }),
+    sharedList(supabase, `signals:${today}`, async (reader) => {
+      const { data, error } = await reader
+        .from("tenders")
+        .select(`${TENDER_FIELDS},cpv_codes`)
+        .eq("status", "PRE")
+        .not("it_segment", "is", null)
+        .gte("updated", since)
+        .limit(300);
+      if (error) throw new Error(error.message);
+      return data || [];
+    }),
+    sharedList(
+      supabase,
+      "latest-import",
+      async (reader) => (await reader.from("tenders").select("ingested_at").order("ingested_at", { ascending: false }).limit(1).maybeSingle()).data,
+      600,
+    ),
+    companyAwards(supabase, company.nif),
+  ]);
+  const decided = new Map<string, Decision>(
+    (decisions.data || []).map((row: { tender_id: string; decision: Decision }) => [row.tender_id, row.decision]),
+  );
+  const matchIds = new Set(matchRows.map((row) => row.tender_id));
+  const extraIds = [...decided.keys()].filter((id) => !matchIds.has(id));
+
+  const ids = [...matchIds];
+  const [details, criteriaRows, decidedRows] = await Promise.all([
+    rowsForTenders(supabase, "discover-details", ids, loadDetails),
+    rowsForTenders(supabase, "discover-criteria", ids, loadCriteria),
+    extraIds.length ? supabase.from("tenders").select(TENDER_FIELDS).in("id", extraIds) : Promise.resolve({ data: [] }),
+  ]);
+  const detail = new Map(details.map((row) => [row.id, row]));
+
   const criteriaByTender = new Map<string, CriterionRow[]>();
-  for (const row of criteriaBatches.flatMap((batch) => (batch.data || []) as CriterionRow[])) {
+  for (const row of criteriaRows) {
     criteriaByTender.set(row.tender_id, [...(criteriaByTender.get(row.tender_id) || []), row]);
   }
   const points = (id: string) => {
@@ -150,6 +157,9 @@ export default async function DiscoverPage() {
     const sum = (list: CriterionRow[]) => list.reduce((total, row) => total + Number(row.weight || 0), 0);
     return { price: sum(whole.filter((row) => row.subtype === "1")), judgement: sum(whole.filter((row) => row.type === "SUBJ")) };
   };
+
+  // Your own award history: a fit-score bonus for buyers you've already won from.
+  const history = summarizeAwards(awards);
 
   const open: FeedTender[] = matchRows.map((row) => {
     const extra = detail.get(row.tender_id);
@@ -167,9 +177,11 @@ export default async function DiscoverPage() {
       has_lots: extra?.has_lots ?? null,
       price_points: points(row.tender_id).price,
       judgement_points: points(row.tender_id).judgement,
-      kind: "open",
+      kind: "open" as const,
     };
-  });
+  })
+    .map((tender) => withTrackRecord(tender, { nif: detail.get(tender.tender_id)?.buyer_nif ?? null, name: tender.buyer_name }, history))
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 
   const inRegion = (region: string | null) =>
     !company.regions.length || (region !== null && (company.regions.includes(region) || region === "Nacional"));
@@ -187,7 +199,7 @@ export default async function DiscoverPage() {
     duration_unit: string | null;
   };
   const seenRenewal = new Set<string>();
-  const renewalList: FeedTender[] = ((renewals.data || []) as RenewalRow[])
+  const renewalList: FeedTender[] = (renewals as RenewalRow[])
     .filter((row) => matchesSectors(row.cpv_codes, company.cpv_prefixes) && inRegion(row.region))
     .filter((row) => !seenRenewal.has(row.tender_id) && Boolean(seenRenewal.add(row.tender_id)))
     .slice(0, 200)
@@ -213,7 +225,7 @@ export default async function DiscoverPage() {
       estimated_end: row.estimated_end,
     }));
 
-  const signalList = ((signals.data || []) as TenderRow[])
+  const signalList = (signals as TenderRow[])
     .filter((row) => matchesSectors(row.cpv_codes ?? null, company.cpv_prefixes))
     .map((row) => fromRow(row, "signal"));
 
@@ -232,7 +244,7 @@ export default async function DiscoverPage() {
         renewals={renewalList}
         signals={signalList}
         initialDecisions={Object.fromEntries(decided)}
-        updatedAt={(latest.data as { ingested_at: string } | null)?.ingested_at ?? null}
+        updatedAt={(latest as { ingested_at: string } | null)?.ingested_at ?? null}
       />
     </AppShell>
   );

@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Tone } from "@/lib/evidence";
 import type { CompanyDocument } from "@/lib/types";
 import { documentLabel } from "@/lib/evidence";
@@ -23,6 +25,9 @@ type FactRowProps = {
   below?: ReactNode;
 };
 
+// Sent before scrolling to a fact, so a collapsed section opens first.
+export const REVEAL_FACT = "bidmagnet:reveal-fact";
+
 export function LedgerTable({
   id,
   title,
@@ -36,13 +41,32 @@ export function LedgerTable({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const [open, setOpen] = useState(true);
+  const ref = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    function onReveal(event: Event) {
+      const target = document.getElementById((event as CustomEvent<string>).detail);
+      if (target && ref.current?.contains(target)) setOpen(true);
+    }
+    window.addEventListener(REVEAL_FACT, onReveal);
+    return () => window.removeEventListener(REVEAL_FACT, onReveal);
+  }, []);
+
   return (
-    <section className="ledger-section" id={id} aria-labelledby={`${id}-title`}>
+    <section ref={ref} className={open ? "ledger-section" : "ledger-section ledger-section-closed"} id={id} aria-labelledby={`${id}-title`}>
       <div className="ledger-section-head">
-        <h2 id={`${id}-title`}>{title}</h2>
+        <h2 id={`${id}-title`}>
+          <button type="button" className="ledger-toggle" aria-expanded={open} aria-controls={`${id}-table`} onClick={() => setOpen(!open)}>
+            <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+              <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {title}
+          </button>
+        </h2>
         {note ? <span>{note}</span> : null}
       </div>
-      <div className="ledger" role="table" aria-labelledby={`${id}-title`}>
+      <div className="ledger" id={`${id}-table`} role="table" aria-labelledby={`${id}-title`} hidden={!open}>
         <div className="ledger-row ledger-head" role="row">
           <span role="columnheader">Fact</span>
           <span role="columnheader">Value</span>

@@ -131,7 +131,7 @@ export type Filters = {
   qualify: boolean; // hide tenders with a dealbreaker for you
   deadline: "any" | "time" | "soon"; // time: ≥10 business days to prepare; soon: ≤5
   region: "all" | "mine" | string;
-  minFit: boolean;
+  minFit: number; // 0 = any fit
   work: string[]; // it_segment values
   contractType: string[]; // Servicios | Suministros
   procedure: string[]; // open | simplified | restricted | other
@@ -151,7 +151,7 @@ export const DEFAULT_FILTERS: Filters = {
   qualify: false,
   deadline: "any",
   region: "all",
-  minFit: false,
+  minFit: 0,
   work: [],
   contractType: [],
   procedure: [],
@@ -243,7 +243,7 @@ export function applyFilters(tenders: FeedTender[], filters: Filters, myRegions:
     } else if (filters.region !== "all" && filters.region !== "mine" && tender.region !== filters.region) {
       return false;
     }
-    if (filters.minFit && tender.score !== null && tender.score < 50) return false;
+    if (filters.minFit && tender.score !== null && tender.score < filters.minFit) return false;
     if (filters.work.length && !filters.work.includes(tender.it_segment ?? "")) return false;
     if (filters.contractType.length && !filters.contractType.includes(tender.contract_type ?? "")) return false;
     if (filters.procedure.length && !filters.procedure.includes(procedureKind(tender.procedure_label))) return false;
@@ -265,6 +265,22 @@ export function applyFilters(tenders: FeedTender[], filters: Filters, myRegions:
     if (filters.platforms.length && !filters.platforms.includes(sourceLabel(tender.source, tender.link, tender.region))) return false;
     return true;
   });
+}
+
+// Short labels for the filters that are on (shown collapsed in Triage).
+export function filterSummary(filters: Filters, sort: Sort) {
+  const labels: string[] = [];
+  if (filters.query.trim()) labels.push(`“${filters.query.trim()}”`);
+  if (filters.qualify) labels.push("I qualify");
+  if (filters.deadline === "time") labels.push("Time to prepare");
+  if (filters.deadline === "soon") labels.push("Closing soon");
+  if (filters.region === "mine") labels.push("My regions");
+  else if (filters.region !== "all") labels.push(filters.region);
+  if (filters.minFit) labels.push(`Fit ≥ ${filters.minFit}`);
+  const more = detailedCount(filters);
+  if (more) labels.push(`+${more} more`);
+  if (sort !== "fit") labels.push(sort === "deadline" ? "Closing soonest first" : "Largest first");
+  return labels;
 }
 
 export function sortTenders(tenders: FeedTender[], sort: Sort) {

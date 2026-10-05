@@ -136,14 +136,21 @@ export function FilterBar({ filters, onChange, sort, onSort, regions, myRegions,
           ))}
         </select>
 
-        <button
-          type="button"
-          aria-pressed={filters.minFit}
-          className={filters.minFit ? "filter-chip filter-chip-on" : "filter-chip"}
-          onClick={() => set({ minFit: !filters.minFit })}
-        >
-          Fit ≥ 50
-        </button>
+        <label className={filters.minFit ? "fbar-fit fbar-fit-on" : "fbar-fit"} title="Hide tenders below this fit score">
+          <span>
+            Fit <b className="mono">{filters.minFit ? `≥ ${filters.minFit}` : "any"}</b>
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={90}
+            step={5}
+            value={filters.minFit}
+            aria-label="Minimum fit score"
+            style={{ "--fill": `${(filters.minFit / 90) * 100}%` } as React.CSSProperties}
+            onChange={(event) => set({ minFit: Number(event.target.value) })}
+          />
+        </label>
 
         <div className="fbar-more" ref={panelRef}>
           <button

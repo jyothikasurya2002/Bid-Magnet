@@ -108,7 +108,9 @@ export function GapRail({ company, revision, onAction }: GapRailProps) {
         <div className="best-fix">
           <span className="best-fix-count">{best.count}</span>
           <span className="best-fix-unit">
-            open tender{best.count === 1 ? "" : "s"} held back
+            {best.key.startsWith("region:")
+              ? `matching tender${best.count === 1 ? "" : "s"} ranked lower`
+              : `open tender${best.count === 1 ? "" : "s"} held back`}
           </span>
           <strong>{best.title}</strong>
           <p>{best.detail}</p>

@@ -6,6 +6,7 @@ import type { Sources } from "@/lib/onboarding";
 import { ENS_LEVELS, isEnsLevel } from "@/lib/profile";
 import type { ClassificationStatus, CompanyProfile, ImportSuggestion, RoleceStatus } from "@/lib/types";
 import { Chip, Field, MoneyInput, OptionRows, Segmented, Switch, TagInput, ToggleCard } from "./controls";
+import { suggestionValue } from "@/components/company/SuggestionRow";
 
 export type StepProps = {
   draft: CompanyProfile;
@@ -33,11 +34,11 @@ function AlsoFound({
   if (!items.length) return null;
   return (
     <div className="ob-also">
-      <span className="ob-label">Also found on your site</span>
+      <span className="ob-label">Also found</span>
       {items.map((item, index) => (
         <div className="ob-also-row" key={index}>
           <span className="ob-also-value">
-            {item.values.length ? item.values.join(", ") : item.value_text}
+            {suggestionValue(item)}
             <small>
               {item.explanation || (item.verified ? "" : "We couldn't double-check this one.")}
             </small>
@@ -159,7 +160,9 @@ export function WhatStep({ draft, set, sources, researching, review, onUseSugges
 }
 
 function SourceDot({ sources }: { sources?: ImportSuggestion[] }) {
-  return sources?.length ? <span className="ob-source-dot ob-inline-dot" title="Found on your site" /> : null;
+  return sources?.length ? (
+    <span className="ob-source-dot ob-inline-dot" title={sources[0].source_url ? "Found on your site" : "From your past awards"} />
+  ) : null;
 }
 
 const SIZE_PRESETS: Array<{ label: string; range: [number | null, number | null] }> = [
@@ -242,7 +245,7 @@ export function WhereStep({ draft, set, sources, review, onUseSuggestion }: Step
         </div>
       </Field>
 
-      <AlsoFound review={review} fields={["regions"]} onUse={onUseSuggestion} />
+      <AlsoFound review={review} fields={["regions", "min_budget", "max_budget"]} onUse={onUseSuggestion} />
     </>
   );
 }

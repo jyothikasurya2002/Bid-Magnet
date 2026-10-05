@@ -1,6 +1,8 @@
 import { AppShell } from "@/components/AppShell";
 import { PipelineList, type PipelineItem } from "@/components/pipeline/PipelineList";
+import { summarizeAwards, withTrackRecord } from "@/lib/award-history";
 import { requireCompany } from "@/lib/company-server";
+import { companyAwards, companyMatches } from "@/lib/data-cache";
 import type { Decision } from "@/lib/discover";
 import type { MatchReason } from "@/lib/types";
 
@@ -12,6 +14,7 @@ type TenderRow = {
   id: string;
   title: string;
   buyer_name: string | null;
+  buyer_nif: string | null;
   budget_no_tax: number | string | null;
   deadline_date: string | null;
   deadline_time: string | null;
@@ -26,29 +29,31 @@ export default async function PipelinePage() {
       .select("tender_id,decision,decided_at")
       .eq("company_id", company.id)
       .in("decision", ["go", "watch"]),
-    supabase.rpc("match_tenders", { p_company: company.id, p_limit: 2000 }),
+    companyMatches<{ tender_id: string; score: number; reasons: MatchReason[] }>(supabase, company.id!, company.updated_at, 2000),
   ]);
   const rows = (decisions.data || []) as Array<{ tender_id: string; decision: Decision; decided_at: string }>;
   const tenders = rows.length
     ? (
         await supabase
           .from("tenders")
-          .select("id,title,buyer_name,budget_no_tax,deadline_date,deadline_time")
+          .select("id,title,buyer_name,buyer_nif,budget_no_tax,deadline_date,deadline_time")
           .in(
             "id",
             rows.map((row) => row.tender_id),
           )
       ).data || []
     : [];
+  const history = summarizeAwards(await companyAwards(supabase, company.nif));
   const byId = new Map((tenders as TenderRow[]).map((row) => [row.id, row]));
   const scores = new Map(
-    ((matches.data || []) as Array<{ tender_id: string; score: number; reasons: MatchReason[] }>).map((row) => [row.tender_id, row]),
+    matches.map((row) => [row.tender_id, row]),
   );
 
   const items: PipelineItem[] = rows.flatMap((row) => {
     const tender = byId.get(row.tender_id);
     if (!tender) return [];
-    const match = scores.get(row.tender_id);
+    const scored = scores.get(row.tender_id);
+    const match = scored ? withTrackRecord(scored, { nif: tender.buyer_nif, name: tender.buyer_name }, history) : undefined;
     return [
       {
         id: tender.id,

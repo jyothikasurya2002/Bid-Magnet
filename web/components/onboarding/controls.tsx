@@ -19,12 +19,16 @@ export function SourceMark({ sources }: { sources?: ImportSuggestion[] }) {
   return (
     <span className="ob-source" tabIndex={0}>
       <span className="ob-source-dot" aria-hidden="true" />
-      {hostOf(first.source_url)}
+      {first.source_url ? hostOf(first.source_url) : "your past awards"}
       <span className="ob-source-pop" role="tooltip">
         <q>{first.source_quote}</q>
-        <a href={first.source_url} target="_blank" rel="noreferrer">
-          Open page ↗
-        </a>
+        {first.source_url ? (
+          <a href={first.source_url} target="_blank" rel="noreferrer">
+            Open page ↗
+          </a>
+        ) : (
+          <span>{first.source_title}</span>
+        )}
       </span>
     </span>
   );

@@ -63,7 +63,7 @@ export function PipelineList({ items, today = todayInSpain() }: { items: Pipelin
       <header className="pipe-head">
         <div>
           <h1>Pipeline</h1>
-          <p>Tenders you’re considering. Open one to see the evidence, ask the AI about it, and make the call.</p>
+          <p>Tenders you’re considering. Open one to see the evidence, ask Scout about it, and make the call.</p>
         </div>
       </header>
 
@@ -140,7 +140,7 @@ function PipelineRow({ item, closed }: { item: PipelineItem; closed: boolean }) 
       </Link>
       {closed ? null : (
         <Link href={`/pipeline/${item.id}?ask=1`} className="pipe-ask">
-          Ask AI
+          Ask Scout
         </Link>
       )}
     </li>

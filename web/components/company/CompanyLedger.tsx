@@ -37,12 +37,14 @@ import {
   RangeEditor,
   TextEditor,
 } from "./editors";
-import { DocChip, FactRow, LedgerTable, type Status } from "./FactRow";
+import { DocChip, FactRow, LedgerTable, REVEAL_FACT, type Status } from "./FactRow";
 import { GapRail } from "./GapRail";
 import { SetupLaterBar } from "./SetupLaterBar";
 import { RowUpload } from "./RowUpload";
 import { useCompanyDocuments } from "./useCompanyDocuments";
 import { WebsiteImport } from "./WebsiteImport";
+import { AwardImport } from "./AwardImport";
+import { COMPANY_NIF } from "@/lib/award-history";
 import { dateFormat } from "@/lib/dates";
 
 type CompanyLedgerProps = {
@@ -115,6 +117,7 @@ export function CompanyLedger({
   const [revision, setRevision] = useState(0);
   const [saveError, setSaveError] = useState("");
   const [importUrl, setImportUrl] = useState<string | null>(null);
+  const [awardsOpen, setAwardsOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   // row the file picker was opened from; undefined = general upload
   const pickTarget = useRef<ProofKey | undefined>(undefined);
@@ -238,8 +241,9 @@ export function CompanyLedger({
 
   function focusFact(id: string) {
     setEditing(id);
+    window.dispatchEvent(new CustomEvent(REVEAL_FACT, { detail: `fact-${id}` }));
     window.requestAnimationFrame(() =>
-      document.getElementById(`fact-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      window.requestAnimationFrame(() => document.getElementById(`fact-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })),
     );
   }
 
@@ -404,7 +408,20 @@ export function CompanyLedger({
             id="nif"
             label="NIF"
             hint="Tax ID; checked against your documents"
-            value={company.nif ? <span className="mono">{company.nif}</span> : <span className="fact-empty">—</span>}
+            value={
+              company.nif ? (
+                <span className="fact-inline">
+                  <span className="mono">{company.nif}</span>
+                  {!awardsOpen && COMPANY_NIF.test(company.nif) ? (
+                    <button type="button" className="link-button link-strong" onClick={() => setAwardsOpen(true)}>
+                      Fill from past awards
+                    </button>
+                  ) : null}
+                </span>
+              ) : (
+                <span className="fact-empty">—</span>
+              )
+            }
             status={company.nif ? null : NOT_SET}
             editing={isEditing("nif")}
             onEdit={edit("nif")}
@@ -476,6 +493,10 @@ export function CompanyLedger({
             }
           />
         </LedgerTable>
+
+        {awardsOpen && company.nif ? (
+          <AwardImport nif={company.nif} onApply={applySuggestion} onClose={() => setAwardsOpen(false)} />
+        ) : null}
 
         {importUrl ? (
           <WebsiteImport
@@ -747,7 +768,7 @@ export function CompanyLedger({
           footer={
             addableCerts.length ? (
               <label className="add-cert">
-                <span>+ Add another certification</span>
+                <span>Add another certification</span>
                 <select
                   value=""
                   onChange={(event) => {

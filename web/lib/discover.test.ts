@@ -11,6 +11,7 @@ import {
   weighting,
   DEFAULT_FILTERS,
   detailedCount,
+  filterSummary,
   sortTenders,
   type FeedTender,
   type Filters,
@@ -70,7 +71,8 @@ describe("discover helpers", () => {
     expect(run({ deadline: "time" })).toEqual(["a", "b", "d"]);
     expect(run({ deadline: "soon" })).toEqual(["c"]);
     expect(run({ region: "mine" })).toEqual(["a", "c"]);
-    expect(run({ minFit: true, hideFrameworks: true })).toEqual(["a", "d"]);
+    expect(run({ minFit: 50, hideFrameworks: true })).toEqual(["a", "d"]);
+    expect(run({ minFit: 85 })).toEqual(["d"]);
     expect(run({ work: ["core"], procedure: ["simplified"], scoring: "price", duration: "mid" })).toEqual(["a"]);
     expect(detailedCount({ ...DEFAULT_FILTERS, work: ["core"], scoring: "price" })).toBe(2);
   });
@@ -105,5 +107,14 @@ describe("isStillOpen", () => {
   it("uses the date in Spain", () => {
     // 23:30 UTC on 4 Oct is already 5 Oct in Madrid
     expect(todayInSpain(new Date("2026-10-04T23:30:00Z"))).toBe("2026-10-05");
+  });
+});
+
+describe("filterSummary", () => {
+  it("lists the filters that are on", () => {
+    expect(filterSummary(DEFAULT_FILTERS, "fit")).toEqual([]);
+    expect(
+      filterSummary({ ...DEFAULT_FILTERS, qualify: true, region: "Madrid", work: ["core"], scoring: "price" }, "deadline"),
+    ).toEqual(["I qualify", "Madrid", "+2 more", "Closing soonest first"]);
   });
 });

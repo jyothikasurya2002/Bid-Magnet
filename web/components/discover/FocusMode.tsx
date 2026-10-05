@@ -15,7 +15,11 @@ import { useTenderSummary } from "./useTenderSummary";
 import { dateFormat } from "@/lib/dates";
 
 type FocusModeProps = {
-  queue: FeedTender[]; // already ordered: closing soon first, then best fit
+  queue: FeedTender[]; // the filtered, sorted list from Discover
+  // Changes when filters or sort change; the remaining cards are rebuilt from `queue`.
+  queueKey: string;
+  filterBar: React.ReactNode;
+  filterSummary: string[];
   onDecide: (id: string, decision: Decision | null, reason?: string) => void;
   onExit: () => void;
   onShowInterested: () => void;
@@ -49,6 +53,9 @@ const FLICK_SPEED = 0.5; // px per ms
 // One tender at a time: decide with a swipe, the buttons or the keyboard.
 export function FocusMode({
   queue: initialQueue,
+  queueKey,
+  filterBar,
+  filterSummary,
   onDecide,
   onExit,
   onShowInterested,
@@ -67,6 +74,19 @@ export function FocusMode({
   const [returning, setReturning] = useState<Choice | null>(null);
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   const [announce, setAnnounce] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [given, setGiven] = useState<Record<string, string>>({});
+  const [seenKey, setSeenKey] = useState(queueKey);
+  // New filters or sort: start over on the remaining tenders, keep what was decided.
+  if (queueKey !== seenKey) {
+    setSeenKey(queueKey);
+    setQueue(initialQueue);
+    setIndex(0);
+    setBatchStart(0);
+    setBatchEnd(Math.min(TRIAGE_BATCH, initialQueue.length));
+    setReasonFor(null);
+    setReturning(null);
+  }
   const cardRef = useRef<HTMLElement>(null);
   const press = useRef<{
     x: number;
@@ -121,16 +141,27 @@ export function FocusMode({
     if (!last) return;
     onDecide(last.tender.tender_id, null);
     setHistory((items) => items.slice(0, -1));
-    setIndex((value) => Math.max(0, value - 1));
+    if (queue[index - 1]?.tender_id === last.tender.tender_id) {
+      setIndex((value) => Math.max(0, value - 1));
+    } else {
+      // Decided before the filters changed: put it back in front.
+      setQueue((items) => [
+        ...items.slice(0, index),
+        last.tender,
+        ...items.slice(index),
+      ]);
+      setBatchEnd((value) => value + 1);
+    }
     setReturning(last.choice);
     setReasonFor(null);
     setAnnounce(`Undone. Back to ${last.tender.title}.`);
-  }, [history, onDecide]);
+  }, [history, onDecide, queue, index]);
 
   const giveReason = useCallback(
     (key: string) => {
       if (!reasonFor) return;
       onDecide(reasonFor, "no_go", key);
+      setGiven((items) => ({ ...items, [reasonFor]: key }));
       setReasonFor(null);
       setAnnounce("Reason saved.");
     },
@@ -145,6 +176,17 @@ export function FocusMode({
         return;
       }
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+      // Typing in the filters (search, budget) shouldn't swipe cards.
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select")) {
+        if (event.key === "Escape") target.blur();
+        return;
+      }
+      if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setFiltersOpen((open) => !open);
+        return;
+      }
       const key = event.key.toLowerCase();
       if (reasonFor && /^[1-5]$/.test(key)) {
         giveReason(PASS_REASONS[Number(key) - 1].key);
@@ -244,174 +286,278 @@ export function FocusMode({
         {announce}
       </p>
 
-      <header className="tri-head">
-        <div className="tri-head-left">
-          <strong>Triage</strong>
-          <span className="mono">
-            {current ? `${done + 1} of ${batchSize}` : "Done"}
-          </span>
-        </div>
-        <div className="tri-progress" aria-hidden="true">
-          <span
-            style={{
-              width: `${(Math.min(done, batchSize) / batchSize) * 100}%`,
-            }}
-          />
-        </div>
-        <div className="tri-tally">
-          <span>{tally.go} interested</span>
-          <span>{tally.watch} later</span>
-          <span>{tally.no_go} not for us</span>
-        </div>
-        <button type="button" className="tri-exit-button" onClick={onExit}>
-          Back to list <kbd>Esc</kbd>
-        </button>
-      </header>
-
-      <div className="tri-stage">
-        {exits.map((item) => (
-          <div
-            key={item.key}
-            className="tri-card-wrap tri-leaving"
-            style={
-              {
-                "--from": item.from,
-                "--to": item.to,
-                animationDuration: `${item.ms}ms`,
-              } as React.CSSProperties
-            }
-            aria-hidden="true"
-          >
-            <TriageCard tender={item.tender} />
+      <aside className="tri-rail">
+        <header className="tri-head">
+          <div className="tri-head-left">
+            <strong>Triage</strong>
+            <span className="mono">
+              {current ? `${done + 1} of ${batchSize}` : "Done"}
+            </span>
           </div>
-        ))}
+          <button type="button" className="tri-exit-button" onClick={onExit}>
+            Back to list <kbd>Esc</kbd>
+          </button>
+          <div className="tri-progress" aria-hidden="true">
+            <span
+              style={{
+                width: `${(Math.min(done, batchSize) / batchSize) * 100}%`,
+              }}
+            />
+          </div>
+          <div className="tri-tally">
+            <span>
+              <b className="mono">{tally.go}</b> interested
+            </span>
+            <span>
+              <b className="mono">{tally.watch}</b> later
+            </span>
+            <span>
+              <b className="mono">{tally.no_go}</b> not for us
+            </span>
+          </div>
+        </header>
 
-        {current ? (
-          <div
-            key={current.tender_id}
-            className={`tri-card-wrap${returning ? ` tri-return-${returning}` : " tri-enter"}${drag.active ? " tri-dragging" : ""}`}
-            style={{
-              transform:
-                drag.active || drag.x
-                  ? `translate(${drag.x}px, ${drag.y}px) rotate(${rotation(drag.x)}deg)`
-                  : undefined,
-              boxShadow:
-                leaning && strength > 0.05
-                  ? `0 0 0 ${1 + strength}px ${leaning === "go" ? "var(--accent)" : "var(--warning)"}, 0 24px 48px -12px rgb(36 33 30 / 26%)`
-                  : undefined,
-            }}
+        <div
+          className={
+            filtersOpen ? "tri-filters tri-filters-open" : "tri-filters"
+          }
+        >
+          <button
+            type="button"
+            className="tri-filter-toggle"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen(!filtersOpen)}
           >
-            <article
-              ref={cardRef}
-              className="tri-card"
-              onPointerDown={onPointerDown}
-              onPointerMove={onPointerMove}
-              onPointerUp={onPointerUp}
-              onPointerCancel={() => {
-                press.current = null;
-                setDrag((current) => ({
-                  ...current,
-                  x: 0,
-                  y: 0,
-                  active: false,
-                }));
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M2 4h12M4.5 8h7M7 12h2"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="tri-filter-label">Filters</span>
+            <span className="tri-filter-summary">
+              {filterSummary.length ? (
+                filterSummary.map((item) => <span key={item}>{item}</span>)
+              ) : (
+                <em>None · all your matches</em>
+              )}
+            </span>
+            <span className="tri-filter-count">
+              {Math.max(0, queue.length - index)} to go
+            </span>
+            <kbd>F</kbd>
+            <svg
+              className="tri-filter-chevron"
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              aria-hidden="true"
+            >
+              <path
+                d="M2 3.5l3 3 3-3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <div className="tri-filter-head">
+            <strong>Filters</strong>
+            <span className="mono">
+              {Math.max(0, queue.length - index)} to go
+            </span>
+          </div>
+          <div className="tri-filter-panel">{filterBar}</div>
+        </div>
+      </aside>
+
+      <div className="tri-main">
+        <div className="tri-stage">
+          {exits.map((item) => (
+            <div
+              key={item.key}
+              className="tri-card-wrap tri-leaving"
+              style={
+                {
+                  "--from": item.from,
+                  "--to": item.to,
+                  animationDuration: `${item.ms}ms`,
+                } as React.CSSProperties
+              }
+              aria-hidden="true"
+            >
+              <TriageCard tender={item.tender} />
+            </div>
+          ))}
+
+          {current ? (
+            <div
+              key={current.tender_id}
+              className={`tri-card-wrap${returning ? ` tri-return-${returning}` : " tri-enter"}${drag.active ? " tri-dragging" : ""}`}
+              style={{
+                transform:
+                  drag.active || drag.x
+                    ? `translate(${drag.x}px, ${drag.y}px) rotate(${rotation(drag.x)}deg)`
+                    : undefined,
+                boxShadow:
+                  leaning && strength > 0.05
+                    ? `0 0 0 ${1 + strength}px ${leaning === "go" ? "var(--accent)" : "var(--text-body)"}, 0 24px 48px -12px rgb(36 33 30 / 26%)`
+                    : undefined,
               }}
             >
-              {leaning && strength > 0.15 ? (
-                <span
-                  className={`tri-lean tri-lean-${leaning}`}
-                  style={{
-                    opacity: Math.min(1, strength * 1.2),
-                    transform: `scale(${0.9 + strength * 0.1})`,
-                  }}
-                >
-                  {leaning === "go" ? "✓ Interested" : "✕ Not for us"}
-                </span>
-              ) : null}
-              <TriageCard tender={current} />
-            </article>
-          </div>
-        ) : (
-          <TriageSummary
-            history={history}
-            remaining={remainingAfterBatch}
-            onUndoOne={(id) => {
-              onDecide(id, null);
-              setHistory((items) =>
-                items.filter((item) => item.tender.tender_id !== id),
-              );
-            }}
-            onKeepGoing={() => {
-              setBatchStart(batchEnd);
-              setBatchEnd(Math.min(queue.length, batchEnd + TRIAGE_BATCH));
-            }}
-            onDecideLater={(tenders) => {
-              setQueue(tenders);
-              setIndex(0);
-              setBatchStart(0);
-              setBatchEnd(tenders.length);
-              setHistory([]);
-            }}
-            onShowInterested={onShowInterested}
-            onExit={onExit}
-          />
-        )}
-      </div>
-
-      {current ? (
-        <div className="tri-actions">
-          <button
-            type="button"
-            className="tri-btn tri-btn-no"
-            onClick={() => commit("no_go")}
-          >
-            <span aria-hidden="true">✕</span> Not for us <kbd>←</kbd>
-          </button>
-          <button
-            type="button"
-            className="tri-btn tri-btn-later"
-            onClick={() => commit("watch")}
-          >
-            Later <kbd>↓</kbd>
-          </button>
-          <button
-            type="button"
-            className="tri-btn tri-btn-yes"
-            onClick={() => commit("go")}
-          >
-            <span aria-hidden="true">✓</span> Interested <kbd>→</kbd>
-          </button>
-        </div>
-      ) : null}
-
-      {current && last ? (
-        <div className="tri-feedback" role="status">
-          {reasonFor === last.tender.tender_id ? (
-            <>
-              <span>Why not?</span>
-              <div className="tri-reasons-pick">
-                {PASS_REASONS.map((reason, position) => (
-                  <button
-                    key={reason.key}
-                    type="button"
-                    className="tri-reason-chip"
-                    onClick={() => giveReason(reason.key)}
+              <article
+                ref={cardRef}
+                className="tri-card"
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={() => {
+                  press.current = null;
+                  setDrag((current) => ({
+                    ...current,
+                    x: 0,
+                    y: 0,
+                    active: false,
+                  }));
+                }}
+              >
+                {leaning && strength > 0.15 ? (
+                  <span
+                    className={`tri-lean tri-lean-${leaning}`}
+                    style={{
+                      opacity: Math.min(1, strength * 1.2),
+                      transform: `scale(${0.9 + strength * 0.1})`,
+                    }}
                   >
-                    {reason.label} <kbd>{position + 1}</kbd>
-                  </button>
-                ))}
-              </div>
-            </>
+                    {leaning === "go" ? "✓ Interested" : "✕ Not for us"}
+                  </span>
+                ) : null}
+                <TriageCard tender={current} />
+              </article>
+            </div>
+          ) : !queue.length ? (
+            <div className="tri-empty">
+              <strong>No tenders left with these filters</strong>
+              <p>Loosen a filter to keep going, or go back to the list.</p>
+              <button
+                type="button"
+                className="tri-btn"
+                onClick={() => setFiltersOpen(true)}
+              >
+                Change filters
+              </button>
+            </div>
           ) : (
-            <span className="tri-last">
-              {LABEL[last.choice]}: <em>{last.tender.title}</em>
-            </span>
+            <TriageSummary
+              history={history}
+              remaining={remainingAfterBatch}
+              onUndoOne={(id) => {
+                onDecide(id, null);
+                setHistory((items) =>
+                  items.filter((item) => item.tender.tender_id !== id),
+                );
+              }}
+              onKeepGoing={() => {
+                setBatchStart(batchEnd);
+                setBatchEnd(Math.min(queue.length, batchEnd + TRIAGE_BATCH));
+              }}
+              onDecideLater={(tenders) => {
+                setQueue(tenders);
+                setIndex(0);
+                setBatchStart(0);
+                setBatchEnd(tenders.length);
+                setHistory([]);
+              }}
+              onShowInterested={onShowInterested}
+              onExit={onExit}
+            />
           )}
-          <button type="button" className="tri-undo" onClick={undo}>
-            ↶ Undo <kbd>Z</kbd>
-          </button>
         </div>
-      ) : null}
+
+        {current ? (
+          <div className="tri-dock">
+            <div className="tri-actions">
+              <button
+                type="button"
+                className="tri-btn tri-btn-no"
+                onClick={() => commit("no_go")}
+              >
+                <span aria-hidden="true">✕</span> Not for us <kbd>←</kbd>
+              </button>
+              <button
+                type="button"
+                className="tri-btn tri-btn-later"
+                onClick={() => commit("watch")}
+              >
+                Later <kbd>↓</kbd>
+              </button>
+              <button
+                type="button"
+                className="tri-btn tri-btn-yes"
+                onClick={() => commit("go")}
+              >
+                <span aria-hidden="true">✓</span> Interested <kbd>→</kbd>
+              </button>
+            </div>
+
+            {last ? (
+              <div className="tri-receipt" role="status">
+                <div className="tri-receipt-head">
+                  <span className="tri-receipt-kicker">Previous tender</span>
+                  <span
+                    className={`tri-receipt-tag tri-receipt-${last.choice}`}
+                  >
+                    {LABEL[last.choice]}
+                  </span>
+                  <span
+                    className="tri-receipt-title"
+                    lang="es"
+                    title={last.tender.title}
+                  >
+                    {last.tender.title}
+                  </span>
+                  <button type="button" className="tri-undo" onClick={undo}>
+                    ↶ Undo <kbd>Z</kbd>
+                  </button>
+                </div>
+                {reasonFor === last.tender.tender_id ? (
+                  <div className="tri-receipt-ask">
+                    <span>
+                      Why wasn’t it for you?{" "}
+                      <small>Optional · helps rank future tenders</small>
+                    </span>
+                    <div className="tri-reasons-pick">
+                      {PASS_REASONS.map((reason, position) => (
+                        <button
+                          key={reason.key}
+                          type="button"
+                          className="tri-reason-chip"
+                          onClick={() => giveReason(reason.key)}
+                        >
+                          {reason.label} <kbd>{position + 1}</kbd>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : given[last.tender.tender_id] ? (
+                  <p className="tri-receipt-saved">
+                    Reason saved:{" "}
+                    {
+                      PASS_REASONS.find(
+                        (reason) => reason.key === given[last.tender.tender_id],
+                      )?.label
+                    }
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

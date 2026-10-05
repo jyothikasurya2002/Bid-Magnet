@@ -112,7 +112,7 @@ function userPrompt(website: string, company: Partial<CompanyProfile>) {
 }
 
 function researchModel() {
-  return process.env.OPENAI_RESEARCH_MODEL || "gpt-6.1-sol";
+  return process.env.OPENAI_RESEARCH_MODEL || "gpt-6-luna";
 }
 
 export class ResearchNotFound extends Error {}
@@ -128,7 +128,7 @@ export async function startCompanyResearch(input: {
     model: researchModel(),
     background: true,
     store: true,
-    max_tool_calls: 24,
+    max_tool_calls: 12,
     reasoning: { effort: "medium" },
     tools: [
       {

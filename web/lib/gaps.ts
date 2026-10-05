@@ -140,12 +140,14 @@ export function computeGaps(matches: MatchRow[], company: CompanyProfile) {
     gaps.push({
       key: `region:${region}`,
       count,
-      title: `${region} not in your regions`,
-      detail: `Matching tenders from ${region} score lower.`,
+      title: `${region} isn't one of your regions`,
+      detail: `Its tenders get no region points, so they rank lower in Discover (they're not hidden). Add it only if you'd work there.`,
       action: { kind: "add-region", label: `Add ${region}`, region },
     });
   }
 
-  gaps.sort((a, b) => b.count - a.count || effort(a) - effort(b));
+  // Real gaps first; regions are a preference, not something to fix.
+  const isRegion = (gap: Gap) => gap.key.startsWith("region:");
+  gaps.sort((a, b) => Number(isRegion(a)) - Number(isRegion(b)) || b.count - a.count || effort(a) - effort(b));
   return { gaps, affected: affected.size, total: matches.length };
 }

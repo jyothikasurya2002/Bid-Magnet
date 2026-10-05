@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buyerStats, tenderBundle } from "@/lib/data-cache";
 import { companyFromRow } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { streamTenderChat, type ChatEvent, type ChatTurn } from "@/lib/tender-chat";
@@ -6,7 +7,7 @@ import { streamTenderChat, type ChatEvent, type ChatTurn } from "@/lib/tender-ch
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-type ChatRequest = { message?: unknown; previousId?: unknown; history?: unknown };
+type ChatRequest = { message?: unknown; previousId?: unknown; history?: unknown; topic?: unknown };
 
 export async function POST(request: Request, ctx: RouteContext<"/api/tenders/[id]/chat">) {
   const supabase = await createClient();
@@ -29,44 +30,36 @@ export async function POST(request: Request, ctx: RouteContext<"/api/tenders/[id
         .map((turn) => ({ role: turn.role, text: turn.text.slice(0, 4000) }))
     : [];
 
+  // The part of the bid this thread is about (a task in the plan), if any.
+  const topic =
+    body.topic && typeof body.topic === "object" && typeof (body.topic as { title?: unknown }).title === "string"
+      ? {
+          title: String((body.topic as { title: string }).title).slice(0, 300),
+          context: String((body.topic as { context?: unknown }).context ?? "").slice(0, 4000),
+        }
+      : null;
+
   const { id } = await ctx.params;
-  const [tender, criteria, requirements, extraction, documents, companyRow] = await Promise.all([
-    supabase
-      .from("tenders")
-      .select(
-        "id,title,buyer_name,buyer_nif,buyer_city,region,status_label,contract_type_label,procedure_label,budget_no_tax,estimated_value,cpv_codes,duration,duration_unit,deadline_date,deadline_time,has_lots,lots,link,extra",
-      )
-      .eq("id", id)
-      .maybeSingle(),
-    supabase.from("tender_criteria").select("lot_id,type,description,weight").eq("tender_id", id),
-    supabase.from("tender_requirements").select("lot_id,kind,code,description,threshold").eq("tender_id", id),
-    supabase
-      .from("tender_extractions")
-      .select("output")
-      .eq("tender_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase.from("tender_documents").select("kind,name,url").eq("tender_id", id),
+  const [bundle, companyRow] = await Promise.all([
+    tenderBundle(supabase, id),
     supabase.from("companies").select("*").eq("owner", user.id).order("created_at", { ascending: true }).limit(1).maybeSingle(),
   ]);
-  if (!tender.data) return NextResponse.json({ error: "Tender not found." }, { status: 404 });
+  if (!bundle.tender) return NextResponse.json({ error: "Tender not found." }, { status: 404 });
   if (!companyRow.data) return NextResponse.json({ error: "Set up your company first." }, { status: 400 });
 
-  const buyer = tender.data.buyer_nif
-    ? (await supabase.from("buyer_stats").select("*").eq("buyer_nif", tender.data.buyer_nif).maybeSingle()).data
-    : null;
+  const buyer = await buyerStats<Record<string, unknown>>(supabase, bundle.tender.buyer_nif);
   const company = companyFromRow(companyRow.data);
 
   const events = streamTenderChat({
     question: message,
     previousId,
     history,
+    topic,
     context: {
-      tender: tender.data,
-      criteria: criteria.data || [],
-      requirements: requirements.data || [],
-      checklist: (extraction.data?.output as Record<string, unknown>) || null,
+      tender: bundle.tender,
+      criteria: bundle.criteria,
+      requirements: bundle.requirements,
+      checklist: bundle.checklist,
       buyer,
       company: {
         name: company.name,
@@ -81,7 +74,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/tenders/[id
         classification_status: company.classification_status,
         classification_codes: company.classification_codes,
       },
-      documents: documents.data || [],
+      documents: bundle.documents,
     },
   });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awardDiscounts, likelyRivals, median, tidyName, type AwardRow } from "./pipeline";
+import { assembleDecision, awardDiscounts, likelyRivals, median, tidyName, type AwardRow, type DecisionInput } from "./pipeline";
 
 const award = (id: string, date: string, budget: number, amount: number, procedure = "Abierto", lot: string | null = null): AwardRow => ({
   tender_id: id,
@@ -59,5 +59,27 @@ describe("helpers", () => {
   it("tidyName calms shouting names", () => {
     expect(tidyName("ALPHA SYLTEC INGENIERIA SLP")).toBe("Alpha Syltec Ingenieria SLP");
     expect(tidyName("Inetum España, S.A.")).toBe("Inetum España, S.A.");
+  });
+});
+
+describe("assembleDecision", () => {
+  const input = (patch: Partial<DecisionInput>): DecisionInput => ({
+    companyId: "c",
+    companyNif: null,
+    companyBudget: [100_000, 1_000_000],
+    today: "2026-10-05",
+    tender: {
+      id: "t", title: "x", buyer_name: null, region: null, budget_no_tax: 45_976, deadline_date: "2026-10-07",
+      deadline_time: null, procedure_label: null, link: null, source: null, duration: null, duration_unit: null,
+    },
+    decision: "go", match: null, buyer: null, awards: [], similar: [], criteria: [], price: null, documents: [], trackRecord: null,
+    ...patch,
+  });
+
+  it("says why there's no fit score", () => {
+    expect(assembleDecision(input({})).noScore).toEqual({ kind: "size", min: 100_000, max: 1_000_000 });
+    expect(assembleDecision(input({ companyBudget: [null, null] })).noScore).toEqual({ kind: "no_match" });
+    expect(assembleDecision(input({ today: "2026-10-09" })).noScore).toEqual({ kind: "closed" });
+    expect(assembleDecision(input({ match: { score: 50, reasons: [] } })).noScore).toBeNull();
   });
 });

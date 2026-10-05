@@ -7,7 +7,7 @@ const reason = (type: MatchReason["type"], text: string): MatchReason => ({ type
 describe("gap rail counts", () => {
   const company = { ...EMPTY_COMPANY, annual_turnover: 2_000_000, regions: ["Madrid"] };
 
-  it("counts each tender once per gap and ranks by count", () => {
+  it("counts each tender once per gap, ranks by count, regions last", () => {
     const { gaps, affected, total } = computeGaps(
       [
         {
@@ -30,10 +30,10 @@ describe("gap rail counts", () => {
     expect(affected).toBe(2);
     expect(gaps.map((gap) => [gap.key, gap.count])).toEqual([
       ["rolece", 2],
-      ["region:Cataluña", 1],
       ["iso27001", 1],
+      ["region:Cataluña", 1],
     ]);
-    expect(gaps[1].action).toEqual({ kind: "add-region", label: "Add Cataluña", region: "Cataluña" });
+    expect(gaps[2].action).toEqual({ kind: "add-region", label: "Add Cataluña", region: "Cataluña" });
   });
 
   it("puts the quicker fix first when counts tie", () => {

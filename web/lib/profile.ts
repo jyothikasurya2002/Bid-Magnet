@@ -72,6 +72,11 @@ export function applyImportSuggestion(
     };
   }
 
+  if (suggestion.field === "min_budget" || suggestion.field === "max_budget") {
+    const amount = Number(suggestion.value_text);
+    return Number.isFinite(amount) ? { ...company, [suggestion.field]: amount } : company;
+  }
+
   return { ...company, [suggestion.field]: suggestion.value_text };
 }
 

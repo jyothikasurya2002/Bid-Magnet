@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { TenderDecision } from "@/components/pipeline/TenderDecision";
+import { COMPANY_NIF, summarizeAwards, trackRecordFor, withTrackRecord } from "@/lib/award-history";
 import { requireCompany } from "@/lib/company-server";
-import type { Decision } from "@/lib/discover";
+import { buyerAwards, buyerStats, companyAwards, companyMatches, similarAwarded, tenderBundle } from "@/lib/data-cache";
+import { todayInSpain, type Decision } from "@/lib/discover";
 import {
   assembleDecision,
   type AwardRow,
@@ -22,56 +24,55 @@ export default async function PipelineTenderPage(props: PageProps<"/pipeline/[id
   const { ask } = await props.searchParams;
   const { supabase, user, company } = await requireCompany();
 
-  const { data: tender } = await supabase
-    .from("tenders")
-    .select("id,title,buyer_name,buyer_nif,region,budget_no_tax,deadline_date,deadline_time,procedure_label,link,source,duration,duration_unit")
-    .eq("id", id)
-    .maybeSingle();
+  // Tender data comes from the shared cache; only your decision is read fresh.
+  const bundle = await tenderBundle(supabase, id);
+  const tender = bundle.tender;
   if (!tender) notFound();
 
-  const [decision, matches, criteria, extraction, documents, buyer, buyerAwards, similar] = await Promise.all([
+  const [decision, matches, buyer, awards, similar, ownAwards] = await Promise.all([
     supabase.from("tender_decisions").select("decision").eq("company_id", company.id).eq("tender_id", id).maybeSingle(),
-    supabase.rpc("match_tenders", { p_company: company.id, p_limit: 2000 }),
-    supabase.from("tender_criteria").select("type,subtype,weight,lot_id").eq("tender_id", id),
-    supabase
-      .from("tender_extractions")
-      .select("output")
-      .eq("tender_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase.from("tender_documents").select("kind,name,url").eq("tender_id", id).in("kind", ["pcap", "ppt"]),
-    tender.buyer_nif
-      ? supabase.from("buyer_stats").select("*").eq("buyer_nif", tender.buyer_nif).maybeSingle()
-      : Promise.resolve({ data: null }),
-    tender.buyer_nif
-      ? supabase
-          .from("tender_results")
-          .select("tender_id,lot_id,award_date,award_amount_no_tax,winner_name,tenders!inner(title,procedure_label,budget_no_tax,buyer_nif)")
-          .eq("tenders.buyer_nif", tender.buyer_nif)
-          .not("award_date", "is", null)
-          .order("award_date", { ascending: false })
-          .limit(300)
-      : Promise.resolve({ data: [] }),
-    supabase.rpc("similar_tenders", { p_tender: id, p_limit: 40, only_awarded: true }),
+    companyMatches<{ tender_id: string; score: number; reasons: MatchReason[] }>(supabase, company.id!, company.updated_at, 2000),
+    buyerStats<BuyerStats>(supabase, tender.buyer_nif),
+    buyerAwards<AwardRow>(supabase, tender.buyer_nif),
+    similarAwarded<SimilarAward>(supabase, id),
+    companyAwards(supabase, company.nif),
   ]);
 
-  const match = ((matches.data || []) as Array<{ tender_id: string; score: number; reasons: MatchReason[] }>).find(
+  const scored = matches.find(
     (row) => row.tender_id === id,
   );
+  const history = summarizeAwards(ownAwards);
+  const match = scored ? withTrackRecord(scored, { nif: tender.buyer_nif, name: tender.buyer_name }, history) : undefined;
+  const budget = Number(tender.budget_no_tax) > 0 ? Number(tender.budget_no_tax) : null;
 
   const data = assembleDecision({
     companyId: company.id!,
     companyNif: company.nif || null,
-    tender,
+    companyBudget: [company.min_budget === null ? null : Number(company.min_budget), company.max_budget === null ? null : Number(company.max_budget)],
+    today: todayInSpain(),
+    tender: {
+      ...tender,
+      budget_no_tax: tender.budget_no_tax === null ? null : Number(tender.budget_no_tax),
+      duration: tender.duration === null ? null : Number(tender.duration),
+    },
     decision: (decision.data?.decision as Decision | undefined) ?? null,
     match: match ?? null,
-    buyer: buyer.data as BuyerStats | null,
-    awards: (buyerAwards.data || []) as unknown as AwardRow[],
-    similar: (similar.data || []) as SimilarAward[],
-    criteria: (criteria.data || []) as Criterion[],
-    price: (extraction.data?.output as { price?: DecisionInput["price"] } | null)?.price ?? null,
-    documents: (documents.data || []) as DecisionInput["documents"],
+    buyer,
+    awards,
+    similar,
+    criteria: bundle.criteria as Criterion[],
+    price: (bundle.checklist as { price?: DecisionInput["price"] } | null)?.price ?? null,
+    documents: bundle.documents.filter((doc) => doc.kind === "pcap" || doc.kind === "ppt") as DecisionInput["documents"],
+    trackRecord: COMPANY_NIF.test((company.nif || "").replace(/[\s.-]/g, "").toUpperCase())
+      ? trackRecordFor(ownAwards, {
+          buyer_nif: tender.buyer_nif,
+          buyer_name: tender.buyer_name,
+          cpv_codes: tender.cpv_codes,
+          budget,
+          duration: tender.duration === null ? null : Number(tender.duration),
+          durationUnit: tender.duration_unit,
+        })
+      : null,
   });
 
   return (
