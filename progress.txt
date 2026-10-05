@@ -247,6 +247,9 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-05  Frontend: own branch jyothika/frontend (copy of Miguel's app, his
+              branch untouched); team colour palette applied; new "Bid with a
+              partner" panel on the tender decision page (partner finder).
   2026-10-03  Power BI export (data-pipeline/powerbi_export.py ->
               out/powerbi/tenders.csv + results.csv) and POWERBI_GUIDE.md
               for Jyothika's college assessment.

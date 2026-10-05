@@ -179,9 +179,12 @@ FRONTEND (web/, Next.js 16 + supabase-js + OpenAI; built by Miguel)
 - Already built by Miguel: Discover feed + FocusMode (Tinder-style swipe:
   Interested / Later / Not for us), Pipeline + TenderChat (OpenAI, cites PDF
   pages), Company ledger + document upload/extraction, onboarding, website research.
-- Not used by the UI yet: partner_candidates, competitor_stats, bidder_history,
-  tender_bids, search_tenders. Team palette (off-white #F8F7F1, deep green
-  #0A4A3A, olive #30361F, black) not applied yet (CSS tokens in web/app/globals.css).
+- Done on jyothika/frontend: team palette in web/app/globals.css :root tokens
+  (canvas #efeee6, surface #f8f7f1, accent #0a4a3a, dark #30361f, text #111410);
+  PartnersPanel (components/pipeline/PartnersPanel.tsx, lib/partners.ts + test)
+  on /pipeline/[id], fed by rpc partner_candidates in app/pipeline/[id]/page.tsx.
+- Not used by the UI yet: competitor_stats, bidder_history, tender_bids,
+  search_tenders.
 
 NEXT (not done)
 - Frontend (Next.js, 7 screens: profile, feed, tender page, checklist, price
