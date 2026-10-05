@@ -88,6 +88,9 @@ PIPELINE (data-pipeline/)
                     companies.embedding (description + keywords). Full run ~10 min
                     for 16k tenders on the laptop; daily runs only embed new ones.
                     `uv run --python 3.12 --with fastembed --with "psycopg[binary]" embed.py`
+- powerbi_export.py out/tenders.jsonl -> out/powerbi/{tenders,results}.csv
+                    (English labels, bands, discount_pct, ISO dates); guide in
+                    POWERBI_GUIDE.md (college assessment, not part of the app).
 - schema.sql        tenders, tender_criteria, tender_documents, tender_results,
                     tender_requirements, tender_extractions (+ RLS: authenticated
                     read). tenders has NO full JSON copy any more (old `raw`
