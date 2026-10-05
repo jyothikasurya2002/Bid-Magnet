@@ -67,7 +67,7 @@ async function assertPublicUrl(url: URL) {
 
 async function safeFetch(
   input: URL,
-  options: { accept?: string; redirects?: number } = {},
+  options: { accept?: string; redirects?: number; timeoutMs?: number } = {},
 ): Promise<{ response: Response; finalUrl: URL }> {
   const redirects = options.redirects ?? 0;
   await assertPublicUrl(input);
@@ -78,7 +78,7 @@ async function safeFetch(
       "User-Agent": USER_AGENT,
       Accept: options.accept ?? "text/html,application/xhtml+xml",
     },
-    signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
+    signal: AbortSignal.timeout(options.timeoutMs ?? PAGE_TIMEOUT_MS),
   });
 
   if (response.status >= 300 && response.status < 400) {
@@ -125,4 +125,17 @@ export async function fetchPageText(rawUrl: string) {
   const type = response.headers.get("content-type") || "";
   if (!type.includes("text/html")) throw new Error("Not an HTML page");
   return extractPage(await readLimitedText(response), finalUrl);
+}
+
+const MAX_PDF_BYTES = 20_000_000;
+
+// A tender PDF from a public procurement platform (PLACSP can take 10+ seconds).
+export async function fetchPdf(rawUrl: string) {
+  const { response } = await safeFetch(new URL(rawUrl), { accept: "application/pdf", timeoutMs: 30_000 });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (Number(response.headers.get("content-length") || "0") > MAX_PDF_BYTES) throw new Error("PDF is too large");
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length > MAX_PDF_BYTES) throw new Error("PDF is too large");
+  if (bytes.subarray(0, 5).toString() !== "%PDF-") throw new Error("Not a PDF");
+  return bytes;
 }

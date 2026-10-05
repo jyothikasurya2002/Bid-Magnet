@@ -2,16 +2,16 @@ import Link from "next/link";
 import { signOut } from "@/app/login/actions";
 
 type AppShellProps = {
-  active: "discover" | "company";
+  active: "discover" | "pipeline" | "company";
   companyName?: string;
   userEmail?: string;
   children: React.ReactNode;
 };
 
-// Discover and Company exist so far; the rest show as upcoming.
+// Discover, Pipeline and Company exist so far; the rest show as upcoming.
 const NAV_ITEMS = [
   { key: "discover", label: "Discover", href: "/discover" },
-  { key: "pipeline", label: "Pipeline" },
+  { key: "pipeline", label: "Pipeline", href: "/pipeline" },
   { key: "bid-prep", label: "Bid prep" },
   { key: "outcomes", label: "Outcomes" },
   { key: "company", label: "Company", href: "/company" },

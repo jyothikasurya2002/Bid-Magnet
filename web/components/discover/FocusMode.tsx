@@ -39,7 +39,6 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
   const [history, setHistory] = useState<Array<{ tender: FeedTender; choice: Choice }>>([]);
   const [exits, setExits] = useState<Exit[]>([]);
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false, width: 560 });
-  const [expanded, setExpanded] = useState(false);
   const [returning, setReturning] = useState<Choice | null>(null);
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   const [announce, setAnnounce] = useState("");
@@ -73,7 +72,6 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
       setHistory((items) => [...items, { tender: current, choice }]);
       setIndex((value) => value + 1);
       setDrag((current) => ({ ...current, x: 0, y: 0, active: false }));
-      setExpanded(false);
       setReturning(null);
       setReasonFor(choice === "no_go" ? current.tender_id : null);
       const left = batchEnd - index - 1;
@@ -125,9 +123,6 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
         commit("watch");
       } else if (key === "z") {
         undo();
-      } else if (key === " ") {
-        event.preventDefault();
-        setExpanded((value) => !value);
       } else if (key === "o" && current?.link) {
         window.open(current.link, "_blank", "noopener");
       } else if (key === "escape") {
@@ -166,10 +161,7 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
     const state = press.current;
     press.current = null;
     if (!state) return;
-    if (!state.dragging) {
-      setExpanded((value) => !value); // a tap opens the details
-      return;
-    }
+    if (!state.dragging) return;
     const first = state.samples[0];
     const elapsed = Math.max(1, event.timeStamp - first.t);
     const speed = Math.abs(event.clientX - first.x) / elapsed;
@@ -226,7 +218,7 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
             style={{ "--from": item.from, "--to": item.to, animationDuration: `${item.ms}ms` } as React.CSSProperties}
             aria-hidden="true"
           >
-            <TriageCard tender={item.tender} expanded={false} />
+            <TriageCard tender={item.tender} />
           </div>
         ))}
 
@@ -261,7 +253,7 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
                   {leaning === "go" ? "✓ Interested" : "✕ Not for us"}
                 </span>
               ) : null}
-              <TriageCard tender={current} expanded={expanded} onToggle={() => setExpanded((value) => !value)} />
+              <TriageCard tender={current} />
             </article>
           </div>
         ) : (
@@ -334,13 +326,13 @@ function rotation(x: number) {
   return Math.max(-12, Math.min(12, x * 0.05));
 }
 
-function TriageCard({ tender, expanded, onToggle }: { tender: FeedTender; expanded: boolean; onToggle?: () => void }) {
+function TriageCard({ tender }: { tender: FeedTender }) {
   const result = useTenderSummary(tender.tender_id);
   const summary = result && "summary" in result ? result.summary : null;
   const days = tender.deadline_date ? businessDaysUntil(tender.deadline_date) : null;
   const stoppers = tender.reasons.filter((reason) => reason.type === "gap");
-  const pros = tender.reasons.filter((reason) => reason.type === "ok" && reason.points > 0).slice(0, expanded ? 10 : 3);
-  const cautions = tender.reasons.filter((reason) => reason.type === "warn").slice(0, expanded ? 10 : 2);
+  const pros = tender.reasons.filter((reason) => reason.type === "ok" && reason.points > 0);
+  const cautions = tender.reasons.filter((reason) => reason.type === "warn");
   const duration = durationLabel(tender.duration, tender.duration_unit);
 
   return (
@@ -360,7 +352,7 @@ function TriageCard({ tender, expanded, onToggle }: { tender: FeedTender; expand
         ) : null}
       </div>
 
-      <h2 className={expanded ? "tri-title" : "tri-title tri-clamp-2"} lang="es">
+      <h2 className="tri-title" lang="es">
         {tender.title}
       </h2>
       <p className="tri-meta">
@@ -380,10 +372,10 @@ function TriageCard({ tender, expanded, onToggle }: { tender: FeedTender; expand
       <div className="tri-summary">
         {summary ? (
           <>
-            <p className={expanded ? undefined : "tri-clamp-3"}>{summary.summary}</p>
+            <p>{summary.summary}</p>
             {summary.watch_outs.length ? (
               <ul className="tri-watch">
-                {summary.watch_outs.slice(0, expanded ? 3 : 2).map((item) => (
+                {summary.watch_outs.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -409,57 +401,49 @@ function TriageCard({ tender, expanded, onToggle }: { tender: FeedTender; expand
         </ul>
       ) : null}
 
-      {expanded ? (
-        <div className="tri-details">
-          <dl>
-            {tender.deadline_date ? (
-              <div>
-                <dt>Deadline</dt>
-                <dd>
-                  {DATE.format(new Date(`${tender.deadline_date}T00:00:00`))}
-                  {tender.deadline_time ? `, ${tender.deadline_time.slice(0, 5)}` : ""}
-                </dd>
-              </div>
-            ) : null}
-            {duration ? (
-              <div>
-                <dt>Duration</dt>
-                <dd>{duration}</dd>
-              </div>
-            ) : null}
-            {tender.procedure_label ? (
-              <div>
-                <dt>Procedure</dt>
-                <dd>{tender.procedure_label}</dd>
-              </div>
-            ) : null}
-            {tender.has_checklist ? (
-              <div>
-                <dt>Checklist</dt>
-                <dd>Ready</dd>
-              </div>
-            ) : null}
-          </dl>
-          {summary?.scope.length ? (
-            <ul className="tri-scope">
-              {summary.scope.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+      <div className="tri-details">
+        <dl>
+          {tender.deadline_date ? (
+            <div>
+              <dt>Deadline</dt>
+              <dd>
+                {DATE.format(new Date(`${tender.deadline_date}T00:00:00`))}
+                {tender.deadline_time ? `, ${tender.deadline_time.slice(0, 5)}` : ""}
+              </dd>
+            </div>
           ) : null}
-          {tender.link ? (
-            <a href={tender.link} target="_blank" rel="noreferrer" className="pane-link">
-              Official notice ↗ <kbd>O</kbd>
-            </a>
+          {duration ? (
+            <div>
+              <dt>Duration</dt>
+              <dd>{duration}</dd>
+            </div>
           ) : null}
-        </div>
-      ) : null}
-
-      {onToggle ? (
-        <button type="button" className="tri-more" onClick={onToggle}>
-          {expanded ? "Less" : "More details"} <kbd>Space</kbd>
-        </button>
-      ) : null}
+          {tender.procedure_label ? (
+            <div>
+              <dt>Procedure</dt>
+              <dd>{tender.procedure_label}</dd>
+            </div>
+          ) : null}
+          {tender.has_checklist ? (
+            <div>
+              <dt>Checklist</dt>
+              <dd>Ready</dd>
+            </div>
+          ) : null}
+        </dl>
+        {summary?.scope.length ? (
+          <ul className="tri-scope">
+            {summary.scope.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        ) : null}
+        {tender.link ? (
+          <a href={tender.link} target="_blank" rel="noreferrer" className="pane-link">
+            Official notice ↗ <kbd>O</kbd>
+          </a>
+        ) : null}
+      </div>
     </>
   );
 }
