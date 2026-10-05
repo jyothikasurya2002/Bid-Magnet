@@ -8,7 +8,8 @@ export const metadata = {
   title: "Welcome",
 };
 
-export default async function WelcomePage() {
+export default async function WelcomePage(props: PageProps<"/welcome">) {
+  const { replay } = await props.searchParams;
   if (!isSupabaseConfigured()) redirect("/login");
   const supabase = await createClient();
   const {
@@ -35,6 +36,11 @@ export default async function WelcomePage() {
   }
 
   return (
-    <Onboarding initialCompany={data ? companyFromRow(data) : null} initialDocuments={documents} userId={user.id} />
+    <Onboarding
+      initialCompany={data ? companyFromRow(data) : null}
+      initialDocuments={documents}
+      userId={user.id}
+      replay={replay === "1"}
+    />
   );
 }

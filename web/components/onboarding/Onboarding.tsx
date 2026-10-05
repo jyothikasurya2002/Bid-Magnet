@@ -37,6 +37,8 @@ type OnboardingProps = {
   initialCompany: CompanyProfile | null;
   initialDocuments: CompanyDocument[];
   userId: string;
+  // /welcome?replay=1: walk through the steps again with your current profile (for testing).
+  replay?: boolean;
 };
 
 function withProtocol(website: string) {
@@ -48,10 +50,20 @@ function hostOf(url: string) {
   return url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
 }
 
-export function Onboarding({ initialCompany, initialDocuments, userId }: OnboardingProps) {
+export function Onboarding({ initialCompany, initialDocuments, userId, replay = false }: OnboardingProps) {
   const [created, setCreated] = useState<CompanyProfile | null>(null);
 
   if (created) return <Flow initial={created} userId={userId} documents={[]} fresh />;
+  if (initialCompany && replay) {
+    return (
+      <Flow
+        initial={initialCompany}
+        userId={userId}
+        documents={initialDocuments}
+        resume={{ step: 0, deferred: [], completed: false }}
+      />
+    );
+  }
   if (initialCompany) return <ResumeGate company={initialCompany} userId={userId} documents={initialDocuments} />;
   return (
     <Frame>

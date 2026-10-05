@@ -5,21 +5,26 @@ import Link from "next/link";
 import {
   applyFilters,
   businessDaysUntil,
+  DEFAULT_FILTERS,
   euroShort,
+  sortTenders,
   sourceLabel,
   TRIAGE_BATCH,
   triageOrder,
   type Decision,
   type FeedTender,
   type Filters,
+  type Sort,
 } from "@/lib/discover";
 import { createClient } from "@/lib/supabase/client";
+import { FilterBar } from "./FilterBar";
 import { FocusMode } from "./FocusMode";
 import { TenderPane } from "./TenderPane";
 
 type DiscoverFeedProps = {
   companyId: string;
   budget: [number | null, number | null];
+  myRegions: string[];
   open: FeedTender[];
   renewals: FeedTender[];
   signals: FeedTender[];
@@ -32,15 +37,10 @@ type Tab = "open" | "interested" | "renewals" | "signals" | "dismissed";
 const SHORT_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 const TIME = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
 
-const FILTER_LABELS: Array<[keyof Filters, string]> = [
-  ["minFit", "Fit ≥ 50"],
-  ["closingSoon", "Closes within 30 days"],
-  ["hideFrameworks", "Hide framework agreements"],
-];
-
 export function DiscoverFeed({
   companyId,
   budget,
+  myRegions,
   open,
   renewals,
   signals,
@@ -49,7 +49,8 @@ export function DiscoverFeed({
 }: DiscoverFeedProps) {
   const [decisions, setDecisions] = useState(initialDecisions);
   const [tab, setTab] = useState<Tab>("open");
-  const [filters, setFilters] = useState<Filters>({ minFit: false, closingSoon: false, hideFrameworks: false });
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [sort, setSort] = useState<Sort>("fit");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [paneOpen, setPaneOpen] = useState(true);
   // Triage queue, fixed when focus mode opens so deciding doesn't reshuffle it.
@@ -57,8 +58,13 @@ export function DiscoverFeed({
   const [error, setError] = useState("");
 
   const everything = [...open, ...renewals, ...signals];
+  const undecided = open.filter((tender) => tender.score !== null && !decisions[tender.tender_id]);
+  const regionOptions = [...new Set(undecided.map((tender) => tender.region).filter((region): region is string => Boolean(region)))].sort(
+    (a, b) => a.localeCompare(b, "es"),
+  );
+  const platformOptions = [...new Set(undecided.map((tender) => sourceLabel(tender.source, tender.link, tender.region)))].sort();
   const lists: Record<Tab, FeedTender[]> = {
-    open: applyFilters(open.filter((tender) => tender.score !== null && !decisions[tender.tender_id]), filters),
+    open: sortTenders(applyFilters(undecided, filters, myRegions), sort),
     interested: everything.filter((tender) => decisions[tender.tender_id] === "go" || decisions[tender.tender_id] === "watch"),
     renewals: renewals.filter((tender) => decisions[tender.tender_id] !== "no_go"),
     signals: signals.filter((tender) => !decisions[tender.tender_id]),
@@ -163,33 +169,34 @@ export function DiscoverFeed({
             </span>
           </div>
 
-          <div className="discover-toolbar">
-            <div className="discover-filters">
-              {FILTER_LABELS.map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={filters[key]}
-                  className={filters[key] ? "filter-chip filter-chip-on" : "filter-chip"}
-                  onClick={() => setFilters((current) => ({ ...current, [key]: !current[key] }))}
-                >
-                  {label}
-                </button>
-              ))}
-              <Link className="filter-chip filter-chip-link" href="/company#fact-budget" title="Set on your company page">
-                {budgetLabel}
-              </Link>
-            </div>
-            {tab === "open" && lists.open.length ? (
-              <button type="button" className="swipe-launch" onClick={() => setFocusQueue(triageOrder(lists.open))}>
-                <span className="swipe-launch-icon" aria-hidden="true">
-                  <span />
-                  <span />
-                </span>
-                Triage {Math.min(TRIAGE_BATCH, lists.open.length)} · closing soon first
-              </button>
-            ) : null}
-          </div>
+          {tab === "open" ? (
+            <FilterBar
+              filters={filters}
+              onChange={setFilters}
+              sort={sort}
+              onSort={setSort}
+              regions={regionOptions}
+              myRegions={myRegions}
+              platforms={platformOptions}
+              count={(next) => applyFilters(undecided, next, myRegions).length}
+              aside={
+                <>
+                  <Link className="filter-chip filter-chip-link" href="/company#fact-budget" title="Contract sizes you see are set on your company page">
+                    {budgetLabel}
+                  </Link>
+                  {lists.open.length ? (
+                    <button type="button" className="swipe-launch" onClick={() => setFocusQueue(triageOrder(lists.open))}>
+                      <span className="swipe-launch-icon" aria-hidden="true">
+                        <span />
+                        <span />
+                      </span>
+                      Triage {Math.min(TRIAGE_BATCH, lists.open.length)} · closing soon first
+                    </button>
+                  ) : null}
+                </>
+              }
+            />
+          ) : null}
           {error ? (
             <p className="discover-error" role="alert">
               {error}

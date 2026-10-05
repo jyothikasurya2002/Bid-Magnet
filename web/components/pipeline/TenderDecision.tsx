@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { TenderSummaryBlock } from "@/components/discover/TenderSummaryBlock";
-import { businessDaysUntil, type Decision } from "@/lib/discover";
+import { businessDaysUntil, isStillOpen, type Decision } from "@/lib/discover";
 import { tidyName, type DecisionData, type Rival } from "@/lib/pipeline";
 import { createClient } from "@/lib/supabase/client";
 import type { MatchReason } from "@/lib/types";
@@ -35,7 +35,7 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
   const chatOpen = chat ?? openChat;
 
   const days = tender.deadline ? businessDaysUntil(tender.deadline) : null;
-  const closed = days === 0 && tender.deadline !== null && new Date(`${tender.deadline}T23:59:59`) < new Date();
+  const closed = !isStillOpen(tender.deadline);
 
   async function decide(next: Decision) {
     if (saving || next === decision) return;
@@ -76,8 +76,8 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
                 .filter(Boolean)
                 .join(" · ")}
               {days !== null ? (
-                <span className={days <= 5 ? "dec-days dec-days-urgent" : "dec-days"}>
-                  {closed ? "closed" : `${days} business day${days === 1 ? "" : "s"} left`}
+                <span className={closed || days <= 5 ? "dec-days dec-days-urgent" : "dec-days"}>
+                  {closed ? "Closed: too late to bid" : `${days} business day${days === 1 ? "" : "s"} left`}
                 </span>
               ) : null}
             </span>

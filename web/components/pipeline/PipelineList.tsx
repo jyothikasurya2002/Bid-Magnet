@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { businessDaysUntil, type Decision } from "@/lib/discover";
+import { businessDaysUntil, isStillOpen, todayInSpain, type Decision } from "@/lib/discover";
 
 export type PipelineItem = {
   id: string;
@@ -17,17 +17,45 @@ const EURO = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR"
 const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 
 function isClosed(item: PipelineItem, today: string) {
-  return item.deadline !== null && item.deadline < today;
+  return !isStillOpen(item.deadline, today);
 }
 
 // Tenders you marked Interested or Later in Discover, soonest deadline first.
-export function PipelineList({ items, today = new Date().toISOString().slice(0, 10) }: { items: PipelineItem[]; today?: string }) {
+export function PipelineList({ items, today = todayInSpain() }: { items: PipelineItem[]; today?: string }) {
   const byDeadline = [...items].sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999"));
+  const open = byDeadline.filter((item) => !isClosed(item, today));
+  const daysLeft = (item: PipelineItem) => (item.deadline ? businessDaysUntil(item.deadline) : Infinity);
+  const interested = open.filter((item) => item.decision === "go");
+
+  // Interested tenders by how soon you have to act; parked and closed ones after.
   const groups = [
-    { key: "go", title: "Interested", hint: "Decide whether to bid", items: byDeadline.filter((item) => item.decision === "go" && !isClosed(item, today)) },
-    { key: "watch", title: "Later", hint: "Parked for now", items: byDeadline.filter((item) => item.decision === "watch" && !isClosed(item, today)) },
-    { key: "closed", title: "Closed", hint: "Deadline passed", items: byDeadline.filter((item) => isClosed(item, today)).reverse() },
+    {
+      key: "week",
+      title: "Closing this week",
+      hint: "Decide now",
+      items: interested.filter((item) => daysLeft(item) <= 5),
+    },
+    {
+      key: "next",
+      title: "Next two weeks",
+      hint: "Enough time to prepare a bid",
+      items: interested.filter((item) => daysLeft(item) > 5 && daysLeft(item) <= 10),
+    },
+    {
+      key: "later",
+      title: "Further out",
+      hint: "Plenty of time",
+      items: interested.filter((item) => daysLeft(item) > 10),
+    },
+    {
+      key: "watch",
+      title: "Parked",
+      hint: "You marked these Later",
+      items: open.filter((item) => item.decision === "watch"),
+    },
   ].filter((group) => group.items.length);
+  const closed = byDeadline.filter((item) => isClosed(item, today)).reverse();
+  const thisWeek = groups.find((group) => group.key === "week")?.items.length ?? 0;
 
   return (
     <main className="pipe">
@@ -38,20 +66,41 @@ export function PipelineList({ items, today = new Date().toISOString().slice(0, 
         </div>
       </header>
 
-      {groups.length ? (
-        groups.map((group) => (
-          <section key={group.key} className="pipe-group" aria-labelledby={`pipe-${group.key}`}>
-            <h2 id={`pipe-${group.key}`}>
-              {group.title} <span className="mono">{group.items.length}</span>
-              <small>{group.hint}</small>
-            </h2>
-            <ul>
-              {group.items.map((item) => (
-                <PipelineRow key={item.id} item={item} closed={group.key === "closed"} />
-              ))}
-            </ul>
-          </section>
-        ))
+      {groups.length || closed.length ? (
+        <>
+          {thisWeek ? (
+            <p className="pipe-summary">
+              <strong>{thisWeek}</strong> to decide this week · {interested.length} interested
+              {open.length > interested.length ? ` · ${open.length - interested.length} parked` : ""}
+            </p>
+          ) : null}
+          {groups.map((group) => (
+            <section key={group.key} className="pipe-group" aria-labelledby={`pipe-${group.key}`}>
+              <h2 id={`pipe-${group.key}`}>
+                {group.title} <span className="mono">{group.items.length}</span>
+                <small>{group.hint}</small>
+              </h2>
+              <ul>
+                {group.items.map((item) => (
+                  <PipelineRow key={item.id} item={item} closed={false} />
+                ))}
+              </ul>
+            </section>
+          ))}
+          {closed.length ? (
+            <details className="pipe-group pipe-closed" open={!groups.length}>
+              <summary>
+                Closed <span className="mono">{closed.length}</span>
+                <small>Closes today or already closed: too late to bid</small>
+              </summary>
+              <ul>
+                {closed.map((item) => (
+                  <PipelineRow key={item.id} item={item} closed />
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </>
       ) : (
         <div className="pipe-empty">
           <strong>Nothing in your pipeline yet</strong>
@@ -81,7 +130,9 @@ function PipelineRow({ item, closed }: { item: PipelineItem; closed: boolean }) 
         <span className={days !== null && days <= 5 ? "pipe-days pipe-days-urgent" : "pipe-days"}>
           {item.deadline
             ? closed
-              ? `Closed ${DATE.format(new Date(`${item.deadline}T00:00:00`))}`
+              ? item.deadline === todayInSpain()
+                ? "Closes today"
+                : `Closed ${DATE.format(new Date(`${item.deadline}T00:00:00`))}`
               : `${days} business day${days === 1 ? "" : "s"}`
             : "No deadline"}
         </span>

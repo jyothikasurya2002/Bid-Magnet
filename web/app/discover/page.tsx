@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { DiscoverFeed } from "@/components/discover/DiscoverFeed";
-import { matchesSectors, type Decision, type FeedTender } from "@/lib/discover";
+import { isStillOpen, matchesSectors, todayInSpain, type Decision, type FeedTender } from "@/lib/discover";
 import { companyFromRow } from "@/lib/profile";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { MatchReason } from "@/lib/types";
@@ -112,17 +112,44 @@ export default async function DiscoverPage() {
 
   const [details, decidedRows] = await Promise.all([
     matchRows.length
-      ? supabase.from("tenders").select("id,source,link,duration,duration_unit,deadline_time").in("id", [...matchIds])
+      ? supabase
+          .from("tenders")
+          .select("id,source,link,duration,duration_unit,deadline_time,it_segment,contract_type_label,has_lots")
+          .in("id", [...matchIds])
       : Promise.resolve({ data: [] }),
     extraIds.length
       ? supabase.from("tenders").select(TENDER_FIELDS).in("id", extraIds)
       : Promise.resolve({ data: [] }),
   ]);
-  const detail = new Map(
-    ((details.data || []) as Array<Pick<TenderRow, "id" | "source" | "link" | "duration" | "duration_unit" | "deadline_time">>).map(
-      (row) => [row.id, row],
+  type DetailRow = Pick<TenderRow, "id" | "source" | "link" | "duration" | "duration_unit" | "deadline_time"> & {
+    it_segment: string | null;
+    contract_type_label: string | null;
+    has_lots: boolean | null;
+  };
+  const detail = new Map(((details.data || []) as DetailRow[]).map((row) => [row.id, row]));
+
+  // Award criteria, for the "how it's scored" filter. Batched to stay under the row limit.
+  const ids = [...matchIds];
+  const criteriaBatches = await Promise.all(
+    Array.from({ length: Math.ceil(ids.length / 40) }, (_, batch) =>
+      supabase
+        .from("tender_criteria")
+        .select("tender_id,type,subtype,weight,lot_id")
+        .in("tender_id", ids.slice(batch * 40, batch * 40 + 40)),
     ),
   );
+  type CriterionRow = { tender_id: string; type: string | null; subtype: string | null; weight: number | null; lot_id: string | null };
+  const criteriaByTender = new Map<string, CriterionRow[]>();
+  for (const row of criteriaBatches.flatMap((batch) => (batch.data || []) as CriterionRow[])) {
+    criteriaByTender.set(row.tender_id, [...(criteriaByTender.get(row.tender_id) || []), row]);
+  }
+  const points = (id: string) => {
+    const rows = criteriaByTender.get(id) || [];
+    const whole = rows.some((row) => !row.lot_id) ? rows.filter((row) => !row.lot_id) : rows;
+    if (!whole.length) return { price: null, judgement: null };
+    const sum = (list: CriterionRow[]) => list.reduce((total, row) => total + Number(row.weight || 0), 0);
+    return { price: sum(whole.filter((row) => row.subtype === "1")), judgement: sum(whole.filter((row) => row.type === "SUBJ")) };
+  };
 
   const open: FeedTender[] = matchRows.map((row) => {
     const extra = detail.get(row.tender_id);
@@ -135,6 +162,11 @@ export default async function DiscoverPage() {
       duration: extra?.duration === null || extra?.duration === undefined ? null : Number(extra.duration),
       duration_unit: extra?.duration_unit ?? null,
       deadline_time: extra?.deadline_time ?? null,
+      it_segment: extra?.it_segment ?? null,
+      contract_type: extra?.contract_type_label ?? null,
+      has_lots: extra?.has_lots ?? null,
+      price_points: points(row.tender_id).price,
+      judgement_points: points(row.tender_id).judgement,
       kind: "open",
     };
   });
@@ -186,13 +218,17 @@ export default async function DiscoverPage() {
     .map((row) => fromRow(row, "signal"));
 
   const decidedElsewhere = ((decidedRows.data || []) as TenderRow[]).map((row) => fromRow(row, "open"));
+  // Hide anything closing today or already closed.
+  const spainToday = todayInSpain();
+  const biddable = [...open, ...decidedElsewhere].filter((tender) => isStillOpen(tender.deadline_date, spainToday));
 
   return (
     <AppShell active="discover" companyName={company.name} userEmail={user.email}>
       <DiscoverFeed
         companyId={company.id!}
         budget={[company.min_budget, company.max_budget]}
-        open={[...open, ...decidedElsewhere]}
+        myRegions={company.regions}
+        open={biddable}
         renewals={renewalList}
         signals={signalList}
         initialDecisions={Object.fromEntries(decided)}

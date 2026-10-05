@@ -5390,3 +5390,335 @@ a.chat-cite:hover {
 .dec-factor-zero .mono {
   color: var(--text-muted);
 }
+
+.pipe-summary {
+  margin-top: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.pipe-summary strong {
+  color: var(--warning);
+}
+
+.pipe-closed summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.pipe-closed summary::-webkit-details-marker {
+  display: none;
+}
+
+.pipe-closed summary::before {
+  content: "›";
+  display: inline-block;
+  transition: transform 120ms ease;
+}
+
+.pipe-closed[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.pipe-closed summary .mono {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.pipe-closed summary small {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* ---------- Discover filter bar ---------- */
+
+.fbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.fbar-search {
+  display: flex;
+  flex: 1 1 260px;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--control);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.fbar-search:focus-within {
+  border-color: var(--control-active);
+}
+
+.fbar-search span {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.fbar-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+}
+
+.fbar-sort {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.fbar-sort select,
+.fbar-select {
+  padding: 5px 8px;
+  border: 1px solid var(--control);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--card);
+  font-size: 12px;
+}
+
+.fbar-select-on {
+  border-color: var(--dark);
+  font-weight: 500;
+}
+
+.fbar-seg {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--control);
+  border-radius: 5px;
+  background: var(--card);
+}
+
+.fbar-seg button {
+  padding: 5px 10px;
+  border: 0;
+  border-left: 1px solid var(--control);
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+}
+
+.fbar-seg button:first-child {
+  border-left: 0;
+}
+
+.fbar-seg button[aria-pressed="true"] {
+  color: white;
+  background: var(--dark);
+}
+
+.fbar-more {
+  position: relative;
+}
+
+.fbar-clear {
+  padding: 5px 4px;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.fbar-clear:hover {
+  color: var(--text);
+}
+
+.fpanel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(600px, calc(100vw - 32px));
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shadow-overlay);
+}
+
+.fpanel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 24px;
+  max-height: min(60vh, 520px);
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.fpanel-grid section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fpanel-wide {
+  grid-column: 1 / -1;
+}
+
+.fpanel h3 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.fpanel-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fpanel-options button {
+  padding: 5px 10px;
+  border: 1px solid var(--control);
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--card);
+  font-size: 12px;
+}
+
+.fpanel-options button:hover {
+  border-color: var(--control-active);
+}
+
+.fpanel-options button[aria-pressed="true"] {
+  border-color: var(--dark);
+  color: white;
+  background: var(--dark);
+}
+
+.fpanel-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.fpanel-range {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.fpanel-range input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--control);
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.fpanel-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.fpanel-check input {
+  margin: 2px 0 0;
+  accent-color: var(--dark);
+}
+
+.fpanel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--divider-subtle);
+}
+
+.fpanel-done {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 6px;
+  color: white;
+  background: var(--dark);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.fpanel-done:hover {
+  background: var(--dark-hover);
+}
+
+@media (max-width: 640px) {
+  .fpanel {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .fpanel-grid {
+    grid-template-columns: 1fr;
+    max-height: 65vh;
+  }
+}
+
+/* Undo the global form-field sizing inside the filter bar. */
+.fbar input,
+.fbar select {
+  width: auto;
+  min-height: 0;
+}
+
+.fbar .fbar-search input {
+  width: 100%;
+  padding: 7px 0;
+  border: 0;
+}
+
+.fbar .fbar-sort select,
+.fbar .fbar-select {
+  padding: 5px 8px;
+}
+
+.fbar .fpanel-range input {
+  width: 100%;
+  padding: 6px 9px;
+}
+
+.fbar .fpanel-check input {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+}
