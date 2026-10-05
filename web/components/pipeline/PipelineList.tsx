@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { businessDaysUntil, isStillOpen, todayInSpain, type Decision } from "@/lib/discover";
+import { dateFormat } from "@/lib/dates";
 
 export type PipelineItem = {
   id: string;
@@ -14,7 +15,7 @@ export type PipelineItem = {
 };
 
 const EURO = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+const DATE = dateFormat({});
 
 function isClosed(item: PipelineItem, today: string) {
   return !isStillOpen(item.deadline, today);
@@ -75,20 +76,20 @@ export function PipelineList({ items, today = todayInSpain() }: { items: Pipelin
             </p>
           ) : null}
           {groups.map((group) => (
-            <section key={group.key} className="pipe-group" aria-labelledby={`pipe-${group.key}`}>
-              <h2 id={`pipe-${group.key}`}>
+            <details key={group.key} className="pipe-group pipe-fold" open>
+              <summary>
                 {group.title} <span className="mono">{group.items.length}</span>
                 <small>{group.hint}</small>
-              </h2>
+              </summary>
               <ul>
                 {group.items.map((item) => (
                   <PipelineRow key={item.id} item={item} closed={false} />
                 ))}
               </ul>
-            </section>
+            </details>
           ))}
           {closed.length ? (
-            <details className="pipe-group pipe-closed" open={!groups.length}>
+            <details className="pipe-group pipe-fold pipe-closed" open={!groups.length}>
               <summary>
                 Closed <span className="mono">{closed.length}</span>
                 <small>Closes today or already closed: too late to bid</small>

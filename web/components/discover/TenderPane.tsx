@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   businessDaysUntil,
   durationLabel,
+  reasonLabel,
   sourceLabel,
   weighting,
   type Decision,
@@ -11,17 +12,20 @@ import {
 } from "@/lib/discover";
 import { createClient } from "@/lib/supabase/client";
 import { TenderSummaryBlock } from "./TenderSummaryBlock";
+import { dateFormat } from "@/lib/dates";
 
 type TenderPaneProps = {
   tender: FeedTender;
   decision: Decision | undefined;
   onDecide: (decision: Decision | null) => void;
   onClose: () => void;
+  // false when the pane opened on its own (first row on page load)
+  autoSummary?: boolean;
 };
 
 const EURO = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-const DEADLINE = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const DEADLINE = dateFormat({ weekday: true });
+const LONG_DATE = dateFormat({ year: "numeric" });
 
 type Criterion = { type: string | null; weight: number | null; lot_id: string | null };
 const criteriaCache = new Map<string, Criterion[]>();
@@ -55,7 +59,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export function TenderPane({ tender, decision, onDecide, onClose }: TenderPaneProps) {
+export function TenderPane({ tender, decision, onDecide, onClose, autoSummary = true }: TenderPaneProps) {
   const criteria = useCriteria(tender.tender_id);
   const weights = criteria ? weighting(criteria) : null;
   const duration = durationLabel(tender.duration, tender.duration_unit);
@@ -89,7 +93,7 @@ export function TenderPane({ tender, decision, onDecide, onClose }: TenderPanePr
         {tender.kind === "renewal" ? (
           <>
             <Fact label="Current contract">
-              <span className="mono">{tender.budget_no_tax !== null ? EURO.format(tender.budget_no_tax) : "—"}</span>
+              <span className="mono">{tender.budget_no_tax !== null ? EURO.format(tender.budget_no_tax) : "Not given"}</span>
             </Fact>
             <Fact label="Expected to end">
               {tender.estimated_end ? LONG_DATE.format(new Date(`${tender.estimated_end}T00:00:00`)) : "—"}
@@ -100,7 +104,7 @@ export function TenderPane({ tender, decision, onDecide, onClose }: TenderPanePr
         ) : (
           <>
             <Fact label="Budget (excl. VAT)">
-              <span className="mono">{tender.budget_no_tax !== null ? EURO.format(tender.budget_no_tax) : "—"}</span>
+              <span className="mono">{tender.budget_no_tax !== null ? EURO.format(tender.budget_no_tax) : "Not given"}</span>
             </Fact>
             <Fact label="Duration">{duration || "—"}</Fact>
             <Fact label="Deadline">
@@ -121,7 +125,7 @@ export function TenderPane({ tender, decision, onDecide, onClose }: TenderPanePr
         )}
       </div>
 
-      <TenderSummaryBlock tenderId={tender.tender_id} />
+      <TenderSummaryBlock tenderId={tender.tender_id} auto={autoSummary} />
 
       {reasons.length ? (
         <div className="pane-reasons">
@@ -131,7 +135,7 @@ export function TenderPane({ tender, decision, onDecide, onClose }: TenderPanePr
               <span className={reason.type === "ok" ? "reason-plus" : "reason-minus"}>
                 {reason.type === "ok" ? "+" : "–"}
               </span>
-              <span>{reason.text}</span>
+              <span>{reasonLabel(reason.text, tender.deadline_date)}</span>
             </div>
           ))}
         </div>

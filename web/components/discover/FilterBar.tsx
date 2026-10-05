@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   CONTRACT_OPTIONS,
@@ -20,8 +21,26 @@ type FilterBarProps = {
   myRegions: string[];
   platforms: string[];
   count: (filters: Filters) => number;
+  profileBudget: string;
   aside?: React.ReactNode;
 };
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function Chevron() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 const DEADLINES: Array<[Filters["deadline"], string]> = [
   ["any", "Any deadline"],
@@ -30,7 +49,7 @@ const DEADLINES: Array<[Filters["deadline"], string]> = [
 ];
 
 // General filters in the toolbar; the detailed ones in a "More filters" panel.
-export function FilterBar({ filters, onChange, sort, onSort, regions, myRegions, platforms, count, aside }: FilterBarProps) {
+export function FilterBar({ filters, onChange, sort, onSort, regions, myRegions, platforms, count, profileBudget, aside }: FilterBarProps) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
@@ -57,7 +76,7 @@ export function FilterBar({ filters, onChange, sort, onSort, regions, myRegions,
     <div className="fbar">
       <div className="fbar-row">
         <label className="fbar-search">
-          <span aria-hidden="true">⌕</span>
+          <SearchIcon />
           <input
             type="search"
             value={filters.query}
@@ -133,10 +152,17 @@ export function FilterBar({ filters, onChange, sort, onSort, regions, myRegions,
             aria-expanded={open}
             onClick={() => setOpen(!open)}
           >
-            More filters{detailed ? ` · ${detailed}` : ""} <span aria-hidden="true">▾</span>
+            More filters{detailed ? ` · ${detailed}` : ""} <Chevron />
           </button>
           {open ? (
-            <MorePanel filters={filters} set={set} platforms={platforms} count={count} onDone={() => setOpen(false)} />
+            <MorePanel
+              filters={filters}
+              set={set}
+              platforms={platforms}
+              count={count}
+              profileBudget={profileBudget}
+              onDone={() => setOpen(false)}
+            />
           ) : null}
         </div>
 
@@ -218,12 +244,14 @@ function MorePanel({
   set,
   platforms,
   count,
+  profileBudget,
   onDone,
 }: {
   filters: Filters;
   set: (patch: Partial<Filters>) => void;
   platforms: string[];
   count: (filters: Filters) => number;
+  profileBudget: string;
   onDone: () => void;
 }) {
   const shown = count(filters);
@@ -274,6 +302,10 @@ function MorePanel({
               onChange={(event) => set({ budgetMax: euros(event.target.value) })}
             />
           </div>
+          <p className="fpanel-hint">
+            Your profile shows {profileBudget}.{" "}
+            <Link href="/company#fact-budget">Change</Link>
+          </p>
         </section>
         <section>
           <h3>Contract length</h3>

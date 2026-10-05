@@ -54,7 +54,7 @@ describe("document proof", () => {
     const now = new Date("2026-10-03T00:00:00Z");
     expect(validity("2027-03-31", now)).toEqual({ tone: "good", label: "Valid to Mar 2027" });
     expect(validity("2026-11-14", now)).toEqual({ tone: "warn", label: "Expires in 6 weeks" });
-    expect(validity("2026-09-01", now).label).toBe("Expired Sept 2026");
+    expect(validity("2026-09-01", now).label).toBe("Expired Sep 2026");
     expect(validity(null, now)).toEqual({ tone: "good", label: "Verified" });
   });
 });

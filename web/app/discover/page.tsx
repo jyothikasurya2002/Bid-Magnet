@@ -35,7 +35,7 @@ function fromRow(row: TenderRow, kind: FeedTender["kind"]): FeedTender {
     title: row.title,
     buyer_name: row.buyer_name,
     region: row.region,
-    budget_no_tax: row.budget_no_tax === null ? null : Number(row.budget_no_tax),
+    budget_no_tax: Number(row.budget_no_tax) > 0 ? Number(row.budget_no_tax) : null, // 0 means not given
     deadline_date: row.deadline_date,
     deadline_time: row.deadline_time,
     procedure_label: row.procedure_label,
@@ -155,7 +155,7 @@ export default async function DiscoverPage() {
     const extra = detail.get(row.tender_id);
     return {
       ...row,
-      budget_no_tax: row.budget_no_tax === null ? null : Number(row.budget_no_tax),
+      budget_no_tax: Number(row.budget_no_tax) > 0 ? Number(row.budget_no_tax) : null, // 0 means not given
       reasons: Array.isArray(row.reasons) ? row.reasons : [],
       link: extra?.link ?? row.link,
       source: extra?.source || "placsp",

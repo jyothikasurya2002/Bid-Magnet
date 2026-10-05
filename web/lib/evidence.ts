@@ -1,5 +1,6 @@
 import { extractionCertification, isEnsLevel } from "./profile";
 import type { CompanyDocument, DocumentExtraction } from "./types";
+import { dateFormat } from "./dates";
 
 // A fact on the company page that a document can prove.
 // Certifications use their catalogue value; every ENS category shares "cert:ENS".
@@ -38,7 +39,7 @@ export function documentExpiry(extraction: DocumentExtraction | null) {
 
 export type Tone = "good" | "warn" | "neutral";
 
-const MONTH_YEAR = new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric" });
+const MONTH_YEAR = dateFormat({ day: false, year: "numeric" });
 const DAY = 24 * 60 * 60 * 1000;
 
 export function validity(expiry: string | null, now = new Date()): { tone: Tone; label: string } {

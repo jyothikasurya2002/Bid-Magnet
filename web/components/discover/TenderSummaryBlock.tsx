@@ -1,10 +1,33 @@
 "use client";
 
+import { useState } from "react";
 import { useTenderSummary } from "./useTenderSummary";
 
-// The AI brief of a tender, with loading and error states.
-export function TenderSummaryBlock({ tenderId, compact = false }: { tenderId: string; compact?: boolean }) {
-  const result = useTenderSummary(tenderId);
+// The AI brief of a tender, with loading and error states. With auto off, it waits
+// for a click, so no AI call is made for tenders nobody opened.
+export function TenderSummaryBlock({
+  tenderId,
+  compact = false,
+  auto = true,
+}: {
+  tenderId: string;
+  compact?: boolean;
+  auto?: boolean;
+}) {
+  const [requested, setRequested] = useState(false);
+  const enabled = auto || requested;
+  const result = useTenderSummary(enabled ? tenderId : null);
+
+  if (!enabled) {
+    return (
+      <button type="button" className={`ai-summary ai-summary-start${compact ? " ai-summary-compact" : ""}`} onClick={() => setRequested(true)}>
+        <span className="ai-summary-mark" aria-hidden="true">
+          ✦
+        </span>
+        <span>Summarise this tender with AI</span>
+      </button>
+    );
+  }
 
   return (
     <div className={`ai-summary${compact ? " ai-summary-compact" : ""}`}>

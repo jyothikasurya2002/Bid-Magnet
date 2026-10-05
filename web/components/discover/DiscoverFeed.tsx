@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   applyFilters,
   businessDaysUntil,
+  closesLabel,
   DEFAULT_FILTERS,
   euroShort,
   sortTenders,
   sourceLabel,
   TRIAGE_BATCH,
-  triageOrder,
   type Decision,
   type FeedTender,
   type Filters,
@@ -20,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import { FilterBar } from "./FilterBar";
 import { FocusMode } from "./FocusMode";
 import { TenderPane } from "./TenderPane";
+import { dateFormat, SPAIN_TIME } from "@/lib/dates";
 
 type DiscoverFeedProps = {
   companyId: string;
@@ -34,8 +34,15 @@ type DiscoverFeedProps = {
 
 type Tab = "open" | "interested" | "renewals" | "signals" | "dismissed";
 
-const SHORT_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-const TIME = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
+// Triage follows the list's Sort.
+const TRIAGE_ORDER: Record<Sort, string> = {
+  fit: "best fit first",
+  deadline: "closing soonest first",
+  budget: "largest first",
+};
+
+const SHORT_DATE = dateFormat({});
+const TIME = SPAIN_TIME;
 
 export function DiscoverFeed({
   companyId,
@@ -123,7 +130,7 @@ export function DiscoverFeed({
 
   const budgetLabel =
     budget[0] === null && budget[1] === null
-      ? "Any contract size"
+      ? "contracts of any size"
       : `${euroShort(budget[0] ?? 0)} – ${budget[1] === null ? "no limit" : euroShort(budget[1])}`;
 
   if (focusQueue) {
@@ -179,18 +186,21 @@ export function DiscoverFeed({
               myRegions={myRegions}
               platforms={platformOptions}
               count={(next) => applyFilters(undecided, next, myRegions).length}
+              profileBudget={budgetLabel}
               aside={
                 <>
-                  <Link className="filter-chip filter-chip-link" href="/company#fact-budget" title="Contract sizes you see are set on your company page">
-                    {budgetLabel}
-                  </Link>
                   {lists.open.length ? (
-                    <button type="button" className="swipe-launch" onClick={() => setFocusQueue(triageOrder(lists.open))}>
+                    <button
+                      type="button"
+                      className="swipe-launch"
+                      onClick={() => setFocusQueue(lists.open)}
+                      title="Goes through the list in the order chosen in Sort"
+                    >
                       <span className="swipe-launch-icon" aria-hidden="true">
                         <span />
                         <span />
                       </span>
-                      Triage {Math.min(TRIAGE_BATCH, lists.open.length)} · closing soon first
+                      Triage {Math.min(TRIAGE_BATCH, lists.open.length)} · {TRIAGE_ORDER[sort]}
                     </button>
                   ) : null}
                 </>
@@ -257,9 +267,9 @@ export function DiscoverFeed({
                     <span>{tender.estimated_end ? SHORT_DATE.format(new Date(`${tender.estimated_end}T00:00:00`)) : "—"}</span>
                   ) : tender.deadline_date ? (
                     <>
-                      <span>{SHORT_DATE.format(new Date(`${tender.deadline_date}T00:00:00`))}</span>
+                      <span>{closesLabel(tender.deadline_date).date}</span>
                       <small className={days !== null && days <= 8 ? "feed-urgent" : undefined}>
-                        {days} business day{days === 1 ? "" : "s"}
+                        {closesLabel(tender.deadline_date).left}
                       </small>
                     </>
                   ) : (
@@ -298,6 +308,7 @@ export function DiscoverFeed({
           decision={decisions[selected.tender_id]}
           onDecide={decideSelected}
           onClose={() => setPaneOpen(false)}
+          autoSummary={selectedId !== null}
         />
       ) : null}
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   businessDaysUntil,
+  reasonLabel,
   durationLabel,
   PASS_REASONS,
   sourceLabel,
@@ -10,7 +11,8 @@ import {
   type Decision,
   type FeedTender,
 } from "@/lib/discover";
-import { prefetchSummary, useTenderSummary } from "./useTenderSummary";
+import { useTenderSummary } from "./useTenderSummary";
+import { dateFormat } from "@/lib/dates";
 
 type FocusModeProps = {
   queue: FeedTender[]; // already ordered: closing soon first, then best fit
@@ -20,36 +22,60 @@ type FocusModeProps = {
 };
 
 type Choice = "go" | "watch" | "no_go";
-type Exit = { key: string; tender: FeedTender; from: string; to: string; ms: number };
+type Exit = {
+  key: string;
+  tender: FeedTender;
+  from: string;
+  to: string;
+  ms: number;
+};
 
-const LABEL: Record<Choice, string> = { go: "Interested", watch: "Later", no_go: "Not for us" };
-const EURO = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-const DATE = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
+const LABEL: Record<Choice, string> = {
+  go: "Interested",
+  watch: "Later",
+  no_go: "Not for us",
+};
+const EURO = new Intl.NumberFormat("en-IE", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+});
+const DATE = dateFormat({ weekday: true });
 
 const DEAD_ZONE = 8; // px before a press becomes a drag
 const COMMIT_SHARE = 0.3; // of card width
 const FLICK_SPEED = 0.5; // px per ms
 
 // One tender at a time: decide with a swipe, the buttons or the keyboard.
-export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInterested }: FocusModeProps) {
+export function FocusMode({
+  queue: initialQueue,
+  onDecide,
+  onExit,
+  onShowInterested,
+}: FocusModeProps) {
   const [queue, setQueue] = useState(initialQueue);
   const [index, setIndex] = useState(0);
   const [batchStart, setBatchStart] = useState(0);
-  const [batchEnd, setBatchEnd] = useState(Math.min(TRIAGE_BATCH, initialQueue.length));
-  const [history, setHistory] = useState<Array<{ tender: FeedTender; choice: Choice }>>([]);
+  const [batchEnd, setBatchEnd] = useState(
+    Math.min(TRIAGE_BATCH, initialQueue.length),
+  );
+  const [history, setHistory] = useState<
+    Array<{ tender: FeedTender; choice: Choice }>
+  >([]);
   const [exits, setExits] = useState<Exit[]>([]);
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false, width: 560 });
   const [returning, setReturning] = useState<Choice | null>(null);
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   const [announce, setAnnounce] = useState("");
   const cardRef = useRef<HTMLElement>(null);
-  const press = useRef<{ x: number; y: number; dragging: boolean; samples: Array<{ x: number; t: number }> } | null>(null);
+  const press = useRef<{
+    x: number;
+    y: number;
+    dragging: boolean;
+    samples: Array<{ x: number; t: number }>;
+  } | null>(null);
 
   const current = index < batchEnd ? queue[index] : undefined;
-
-  useEffect(() => {
-    queue.slice(index, index + 3).forEach((tender) => prefetchSummary(tender.tender_id));
-  }, [queue, index]);
 
   const commit = useCallback(
     (choice: Choice, gesture?: { x: number; y: number; speed: number }) => {
@@ -63,10 +89,20 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
           ? "translate(0, 70vh) rotate(0deg)"
           : `translate(${choice === "go" ? width : -width}px, ${(gesture?.y ?? 0) + 60}px) rotate(${choice === "go" ? 16 : -16}deg)`;
       // A flick keeps its speed; a button press uses a short, even exit.
-      const ms = gesture ? Math.round(Math.min(300, Math.max(180, (width / 2) / Math.max(gesture.speed, 0.01)))) : 240;
+      const ms = gesture
+        ? Math.round(
+            Math.min(
+              300,
+              Math.max(180, width / 2 / Math.max(gesture.speed, 0.01)),
+            ),
+          )
+        : 240;
       const key = `${current.tender_id}-${Date.now()}`;
       setExits((items) => [...items, { key, tender: current, from, to, ms }]);
-      window.setTimeout(() => setExits((items) => items.filter((item) => item.key !== key)), ms + 40);
+      window.setTimeout(
+        () => setExits((items) => items.filter((item) => item.key !== key)),
+        ms + 40,
+      );
 
       onDecide(current.tender_id, choice);
       setHistory((items) => [...items, { tender: current, choice }]);
@@ -135,7 +171,12 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
 
   function onPointerDown(event: React.PointerEvent) {
     if ((event.target as HTMLElement).closest("a,button")) return;
-    press.current = { x: event.clientX, y: event.clientY, dragging: false, samples: [{ x: event.clientX, t: event.timeStamp }] };
+    press.current = {
+      x: event.clientX,
+      y: event.clientY,
+      dragging: false,
+      samples: [{ x: event.clientX, t: event.timeStamp }],
+    };
   }
 
   function onPointerMove(event: React.PointerEvent) {
@@ -153,8 +194,16 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
       state.dragging = true;
       (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     }
-    state.samples = [...state.samples.filter((sample) => event.timeStamp - sample.t < 80), { x: event.clientX, t: event.timeStamp }];
-    setDrag({ x: dx, y: dy * 0.3, active: true, width: cardRef.current?.offsetWidth ?? 560 });
+    state.samples = [
+      ...state.samples.filter((sample) => event.timeStamp - sample.t < 80),
+      { x: event.clientX, t: event.timeStamp },
+    ];
+    setDrag({
+      x: dx,
+      y: dy * 0.3,
+      active: true,
+      width: cardRef.current?.offsetWidth ?? 560,
+    });
   }
 
   function onPointerUp(event: React.PointerEvent) {
@@ -167,7 +216,10 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
     const speed = Math.abs(event.clientX - first.x) / elapsed;
     const width = drag.width;
     const x = drag.x;
-    if (Math.abs(x) >= width * COMMIT_SHARE || (speed >= FLICK_SPEED && Math.abs(x) >= 40)) {
+    if (
+      Math.abs(x) >= width * COMMIT_SHARE ||
+      (speed >= FLICK_SPEED && Math.abs(x) >= 40)
+    ) {
       commit(x > 0 ? "go" : "no_go", { x, y: drag.y, speed });
     } else {
       setDrag((current) => ({ ...current, x: 0, y: 0, active: false }));
@@ -195,10 +247,16 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
       <header className="tri-head">
         <div className="tri-head-left">
           <strong>Triage</strong>
-          <span className="mono">{current ? `${done + 1} of ${batchSize}` : "Done"}</span>
+          <span className="mono">
+            {current ? `${done + 1} of ${batchSize}` : "Done"}
+          </span>
         </div>
         <div className="tri-progress" aria-hidden="true">
-          <span style={{ width: `${(Math.min(done, batchSize) / batchSize) * 100}%` }} />
+          <span
+            style={{
+              width: `${(Math.min(done, batchSize) / batchSize) * 100}%`,
+            }}
+          />
         </div>
         <div className="tri-tally">
           <span>{tally.go} interested</span>
@@ -215,7 +273,13 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
           <div
             key={item.key}
             className="tri-card-wrap tri-leaving"
-            style={{ "--from": item.from, "--to": item.to, animationDuration: `${item.ms}ms` } as React.CSSProperties}
+            style={
+              {
+                "--from": item.from,
+                "--to": item.to,
+                animationDuration: `${item.ms}ms`,
+              } as React.CSSProperties
+            }
             aria-hidden="true"
           >
             <TriageCard tender={item.tender} />
@@ -227,7 +291,10 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
             key={current.tender_id}
             className={`tri-card-wrap${returning ? ` tri-return-${returning}` : " tri-enter"}${drag.active ? " tri-dragging" : ""}`}
             style={{
-              transform: drag.active || drag.x ? `translate(${drag.x}px, ${drag.y}px) rotate(${rotation(drag.x)}deg)` : undefined,
+              transform:
+                drag.active || drag.x
+                  ? `translate(${drag.x}px, ${drag.y}px) rotate(${rotation(drag.x)}deg)`
+                  : undefined,
               boxShadow:
                 leaning && strength > 0.05
                   ? `0 0 0 ${1 + strength}px ${leaning === "go" ? "var(--accent)" : "var(--warning)"}, 0 24px 48px -12px rgb(36 33 30 / 26%)`
@@ -242,13 +309,21 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
               onPointerUp={onPointerUp}
               onPointerCancel={() => {
                 press.current = null;
-                setDrag((current) => ({ ...current, x: 0, y: 0, active: false }));
+                setDrag((current) => ({
+                  ...current,
+                  x: 0,
+                  y: 0,
+                  active: false,
+                }));
               }}
             >
               {leaning && strength > 0.15 ? (
                 <span
                   className={`tri-lean tri-lean-${leaning}`}
-                  style={{ opacity: Math.min(1, strength * 1.2), transform: `scale(${0.9 + strength * 0.1})` }}
+                  style={{
+                    opacity: Math.min(1, strength * 1.2),
+                    transform: `scale(${0.9 + strength * 0.1})`,
+                  }}
                 >
                   {leaning === "go" ? "✓ Interested" : "✕ Not for us"}
                 </span>
@@ -262,7 +337,9 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
             remaining={remainingAfterBatch}
             onUndoOne={(id) => {
               onDecide(id, null);
-              setHistory((items) => items.filter((item) => item.tender.tender_id !== id));
+              setHistory((items) =>
+                items.filter((item) => item.tender.tender_id !== id),
+              );
             }}
             onKeepGoing={() => {
               setBatchStart(batchEnd);
@@ -283,13 +360,25 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
 
       {current ? (
         <div className="tri-actions">
-          <button type="button" className="tri-btn tri-btn-no" onClick={() => commit("no_go")}>
+          <button
+            type="button"
+            className="tri-btn tri-btn-no"
+            onClick={() => commit("no_go")}
+          >
             <span aria-hidden="true">✕</span> Not for us <kbd>←</kbd>
           </button>
-          <button type="button" className="tri-btn tri-btn-later" onClick={() => commit("watch")}>
+          <button
+            type="button"
+            className="tri-btn tri-btn-later"
+            onClick={() => commit("watch")}
+          >
             Later <kbd>↓</kbd>
           </button>
-          <button type="button" className="tri-btn tri-btn-yes" onClick={() => commit("go")}>
+          <button
+            type="button"
+            className="tri-btn tri-btn-yes"
+            onClick={() => commit("go")}
+          >
             <span aria-hidden="true">✓</span> Interested <kbd>→</kbd>
           </button>
         </div>
@@ -302,7 +391,12 @@ export function FocusMode({ queue: initialQueue, onDecide, onExit, onShowInteres
               <span>Why not?</span>
               <div className="tri-reasons-pick">
                 {PASS_REASONS.map((reason, position) => (
-                  <button key={reason.key} type="button" className="tri-reason-chip" onClick={() => giveReason(reason.key)}>
+                  <button
+                    key={reason.key}
+                    type="button"
+                    className="tri-reason-chip"
+                    onClick={() => giveReason(reason.key)}
+                  >
                     {reason.label} <kbd>{position + 1}</kbd>
                   </button>
                 ))}
@@ -329,9 +423,13 @@ function rotation(x: number) {
 function TriageCard({ tender }: { tender: FeedTender }) {
   const result = useTenderSummary(tender.tender_id);
   const summary = result && "summary" in result ? result.summary : null;
-  const days = tender.deadline_date ? businessDaysUntil(tender.deadline_date) : null;
+  const days = tender.deadline_date
+    ? businessDaysUntil(tender.deadline_date)
+    : null;
   const stoppers = tender.reasons.filter((reason) => reason.type === "gap");
-  const pros = tender.reasons.filter((reason) => reason.type === "ok" && reason.points > 0);
+  const pros = tender.reasons.filter(
+    (reason) => reason.type === "ok" && reason.points > 0,
+  );
   const cautions = tender.reasons.filter((reason) => reason.type === "warn");
   const duration = durationLabel(tender.duration, tender.duration_unit);
 
@@ -344,7 +442,11 @@ function TriageCard({ tender }: { tender: FeedTender }) {
             <span>fit</span>
           </span>
         ) : null}
-        <span className="tri-money mono">{tender.budget_no_tax !== null ? EURO.format(tender.budget_no_tax) : "Budget not given"}</span>
+        <span className="tri-money mono">
+          {tender.budget_no_tax !== null
+            ? EURO.format(tender.budget_no_tax)
+            : "Budget not given"}
+        </span>
         {days !== null ? (
           <span className={days <= 5 ? "tri-days tri-days-urgent" : "tri-days"}>
             {days} business day{days === 1 ? "" : "s"} left
@@ -356,46 +458,55 @@ function TriageCard({ tender }: { tender: FeedTender }) {
         {tender.title}
       </h2>
       <p className="tri-meta">
-        {[tender.buyer_name, tender.region, sourceLabel(tender.source, tender.link, tender.region)].filter(Boolean).join(" · ")}
+        {[
+          tender.buyer_name,
+          tender.region,
+          sourceLabel(tender.source, tender.link, tender.region),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
 
       {stoppers.length ? (
         <ul className="tri-stoppers">
           {stoppers.map((reason) => (
             <li key={reason.text}>
-              <span aria-hidden="true">✕</span> {reason.text}
+              <span aria-hidden="true">✕</span>{" "}
+              {reasonLabel(reason.text, tender.deadline_date)}
             </li>
           ))}
         </ul>
       ) : null}
 
-      <div className="tri-summary">
-        {summary ? (
-          <>
-            <p>{summary.summary}</p>
-            {summary.watch_outs.length ? (
-              <ul className="tri-watch">
-                {summary.watch_outs.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            ) : null}
-          </>
-        ) : result && "error" in result ? null : (
-          <p className="tri-summary-wait">Reading the tender…</p>
-        )}
-      </div>
+      {result && "error" in result ? null : (
+        <div className="tri-summary">
+          {summary ? (
+            <>
+              <p>{summary.summary}</p>
+              {summary.watch_outs.length ? (
+                <ul className="tri-watch">
+                  {summary.watch_outs.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </>
+          ) : (
+            <p className="tri-summary-wait">Reading the tender…</p>
+          )}
+        </div>
+      )}
 
       {pros.length || cautions.length ? (
         <ul className="tri-why">
           {pros.map((reason) => (
             <li key={reason.text} className="tri-pro">
-              + {reason.text}
+              + {reasonLabel(reason.text, tender.deadline_date)}
             </li>
           ))}
           {cautions.map((reason) => (
             <li key={reason.text} className="tri-con">
-              – {reason.text}
+              – {reasonLabel(reason.text, tender.deadline_date)}
             </li>
           ))}
         </ul>
@@ -408,7 +519,9 @@ function TriageCard({ tender }: { tender: FeedTender }) {
               <dt>Deadline</dt>
               <dd>
                 {DATE.format(new Date(`${tender.deadline_date}T00:00:00`))}
-                {tender.deadline_time ? `, ${tender.deadline_time.slice(0, 5)}` : ""}
+                {tender.deadline_time
+                  ? `, ${tender.deadline_time.slice(0, 5)}`
+                  : ""}
               </dd>
             </div>
           ) : null}
@@ -439,7 +552,12 @@ function TriageCard({ tender }: { tender: FeedTender }) {
           </ul>
         ) : null}
         {tender.link ? (
-          <a href={tender.link} target="_blank" rel="noreferrer" className="pane-link">
+          <a
+            href={tender.link}
+            target="_blank"
+            rel="noreferrer"
+            className="pane-link"
+          >
             Official notice ↗ <kbd>O</kbd>
           </a>
         ) : null}
@@ -466,13 +584,16 @@ function TriageSummary({
   onExit: () => void;
 }) {
   const [showPassed, setShowPassed] = useState(false);
-  const by = (choice: Choice) => history.filter((item) => item.choice === choice).map((item) => item.tender);
+  const by = (choice: Choice) =>
+    history.filter((item) => item.choice === choice).map((item) => item.tender);
   const interested = by("go");
   const later = by("watch");
   const passed = by("no_go");
 
   const row = (tender: FeedTender, action?: React.ReactNode) => {
-    const days = tender.deadline_date ? businessDaysUntil(tender.deadline_date) : null;
+    const days = tender.deadline_date
+      ? businessDaysUntil(tender.deadline_date)
+      : null;
     return (
       <li key={tender.tender_id}>
         <span className="tri-sum-title">
@@ -489,9 +610,12 @@ function TriageSummary({
 
   return (
     <div className="tri-summary-screen">
-      <h2>{history.length ? `${history.length} reviewed` : "Nothing to review"}</h2>
+      <h2>
+        {history.length ? `${history.length} reviewed` : "Nothing to review"}
+      </h2>
       <p>
-        {interested.length} interested · {later.length} for later · {passed.length} not for us
+        {interested.length} interested · {later.length} for later ·{" "}
+        {passed.length} not for us
       </p>
 
       {interested.length ? (
@@ -502,7 +626,12 @@ function TriageSummary({
               row(
                 tender,
                 tender.link ? (
-                  <a className="link-button link-strong" href={tender.link} target="_blank" rel="noreferrer">
+                  <a
+                    className="link-button link-strong"
+                    href={tender.link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Notice ↗
                   </a>
                 ) : null,
@@ -516,7 +645,11 @@ function TriageSummary({
         <div className="tri-sum-group">
           <h3>Later</h3>
           <ul>{later.map((tender) => row(tender))}</ul>
-          <button type="button" className="link-button link-strong" onClick={() => onDecideLater(later)}>
+          <button
+            type="button"
+            className="link-button link-strong"
+            onClick={() => onDecideLater(later)}
+          >
             Decide on these now
           </button>
         </div>
@@ -524,7 +657,11 @@ function TriageSummary({
 
       {passed.length ? (
         <div className="tri-sum-group">
-          <button type="button" className="tri-sum-toggle" onClick={() => setShowPassed(!showPassed)}>
+          <button
+            type="button"
+            className="tri-sum-toggle"
+            onClick={() => setShowPassed(!showPassed)}
+          >
             Not for us · {passed.length} {showPassed ? "▴" : "▾"}
           </button>
           {showPassed ? (
@@ -532,7 +669,11 @@ function TriageSummary({
               {passed.map((tender) =>
                 row(
                   tender,
-                  <button type="button" className="link-button" onClick={() => onUndoOne(tender.tender_id)}>
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => onUndoOne(tender.tender_id)}
+                  >
                     Undo
                   </button>,
                 ),
@@ -549,7 +690,11 @@ function TriageSummary({
           </button>
         ) : null}
         {interested.length ? (
-          <button type="button" className={remaining > 0 ? "button pane-secondary" : "ob-continue"} onClick={onShowInterested}>
+          <button
+            type="button"
+            className={remaining > 0 ? "button pane-secondary" : "ob-continue"}
+            onClick={onShowInterested}
+          >
             Review {interested.length} interested
           </button>
         ) : null}

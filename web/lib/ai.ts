@@ -44,7 +44,8 @@ export function getClient() {
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is not configured on the web server.");
   }
-  return new OpenAI({ apiKey });
+  // One retry at most: failed calls (e.g. no credits) shouldn't be repeated three times.
+  return new OpenAI({ apiKey, maxRetries: 1 });
 }
 
 function model() {

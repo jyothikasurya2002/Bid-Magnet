@@ -215,7 +215,7 @@ export function assembleDecision(input: DecisionInput): DecisionData {
       title: tender.title,
       buyer: tender.buyer_name,
       region: tender.region,
-      budget: tender.budget_no_tax === null ? null : Number(tender.budget_no_tax),
+      budget: Number(tender.budget_no_tax) > 0 ? Number(tender.budget_no_tax) : null,
       deadline: tender.deadline_date,
       deadlineTime: tender.deadline_time,
       procedure: tender.procedure_label,

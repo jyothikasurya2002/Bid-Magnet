@@ -45,6 +45,9 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/tenders/[id
   } catch (error) {
     console.error("tender summary failed", error);
     const message = error instanceof Error ? error.message : "unknown error";
-    return NextResponse.json({ error: `Couldn't summarise this tender: ${message}` }, { status: 502 });
+    const friendly = /credit|quota|billing|429/i.test(message)
+      ? "AI summary unavailable: the OpenAI account has run out of credits."
+      : "Couldn't write the summary right now. Try again in a minute.";
+    return NextResponse.json({ error: friendly }, { status: 502 });
   }
 }

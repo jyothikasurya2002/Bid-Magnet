@@ -41,8 +41,3 @@ export function useTenderSummary(id: string | null) {
 
   return id ? results[id] ?? null : null;
 }
-
-// Warm the cache for cards the user is about to see.
-export function prefetchSummary(id: string) {
-  void fetchSummary(id);
-}

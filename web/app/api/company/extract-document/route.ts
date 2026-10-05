@@ -109,7 +109,13 @@ export async function POST(request: Request) {
       })
       .eq("id", document.id);
 
-    const message = error instanceof Error ? error.message : "Document extraction failed.";
+    console.error("document extraction failed", error);
+    const raw = error instanceof Error ? error.message : "";
+    const message = /credit|quota|billing|429/i.test(raw)
+      ? "Couldn't read it: the OpenAI account has run out of credits. The file is saved."
+      : /password|encrypt/i.test(raw)
+        ? "Couldn't read it: the PDF is password-protected."
+        : "Couldn't read this file. It's saved; try again or fill the details in yourself.";
     return NextResponse.json({ error: message }, { status: 422 });
   }
 }

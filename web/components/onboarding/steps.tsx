@@ -173,7 +173,8 @@ const SIZE_PRESETS: Array<{ label: string; range: [number | null, number | null]
 export function WhereStep({ draft, set, sources, review, onUseSuggestion }: StepProps) {
   const anywhere = draft.regions.length === 0;
   const regionFound = found(sources, "regions");
-  const [showRegions, setShowRegions] = useState(!anywhere);
+  // Start with the region list open, so people pick where they work rather than skip it.
+  const [showRegions, setShowRegions] = useState(true);
 
   return (
     <>
@@ -206,6 +207,9 @@ export function WhereStep({ draft, set, sources, review, onUseSuggestion }: Step
               </Chip>
             ))}
           </div>
+        ) : null}
+        {showRegions && anywhere ? (
+          <p className="ob-hint">Pick the regions you work in, or switch on Anywhere in Spain.</p>
         ) : null}
         {!anywhere ? (
           <Switch

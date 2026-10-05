@@ -43,6 +43,7 @@ import { SetupLaterBar } from "./SetupLaterBar";
 import { RowUpload } from "./RowUpload";
 import { useCompanyDocuments } from "./useCompanyDocuments";
 import { WebsiteImport } from "./WebsiteImport";
+import { dateFormat } from "@/lib/dates";
 
 type CompanyLedgerProps = {
   initialCompany: CompanyProfile;
@@ -55,7 +56,7 @@ const EURO = new Intl.NumberFormat("en-IE", {
   currency: "EUR",
   maximumFractionDigits: 0,
 });
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+const DAY_MONTH = dateFormat({});
 
 const MISSING: Status = { tone: "warn", label: "Missing" };
 const NOT_SET: Status = { tone: "neutral", label: "Not set" };

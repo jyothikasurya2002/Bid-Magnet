@@ -70,6 +70,19 @@ const PLATFORM_HOSTS: Array<[RegExp, string]> = [
   [/contrataciondelestado\.es|contrataciondelsectorpublico\.gob\.es/, "PLACSP"],
 ];
 
+// "Closes" column: date (with the year when it isn't this year) and time left.
+export function closesLabel(deadline: string, today = new Date()) {
+  const date = new Date(`${deadline}T00:00:00`);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const label = `${date.getDate()} ${months[date.getMonth()]}${date.getFullYear() !== today.getFullYear() ? ` ${date.getFullYear()}` : ""}`;
+  const days = businessDaysUntil(deadline, today);
+  const left =
+    days <= 40
+      ? `${days} business day${days === 1 ? "" : "s"}`
+      : `in ${Math.round((date.getTime() - startOfDay(today).getTime()) / (30.44 * DAY))} months`;
+  return { date: label, left, days };
+}
+
 // Which platform publishes the tender, from its link.
 export function sourceLabel(source: string | null, link: string | null, region: string | null) {
   const hit = link ? PLATFORM_HOSTS.find(([pattern]) => pattern.test(link)) : undefined;
@@ -89,7 +102,7 @@ export function durationLabel(duration: number | null, unit: string | null) {
 
 const EURO_SHORT = new Intl.NumberFormat("en-IE", { maximumFractionDigits: 1 });
 export function euroShort(value: number | null) {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined || value <= 0) return "—";
   if (value >= 1_000_000) return `€${EURO_SHORT.format(value / 1_000_000)}M`;
   if (value >= 1_000) return `€${Math.round(value / 1_000)}k`;
   return `€${Math.round(value)}`;
@@ -269,17 +282,15 @@ export function matchesSectors(cpvCodes: string[] | null, prefixes: string[]) {
   return (cpvCodes || []).some((code) => prefixes.some((prefix) => code.startsWith(prefix)));
 }
 
-// Triage order: anything closing within 5 business days first (soonest first), then best fit.
-export function triageOrder(tenders: FeedTender[], today = new Date()) {
-  const urgent = (tender: FeedTender) =>
-    tender.deadline_date !== null && businessDaysUntil(tender.deadline_date, today) <= 5;
-  return [...tenders].sort((a, b) => {
-    const ua = urgent(a);
-    const ub = urgent(b);
-    if (ua !== ub) return ua ? -1 : 1;
-    if (ua && ub) return (a.deadline_date ?? "").localeCompare(b.deadline_date ?? "");
-    return (b.score ?? 0) - (a.score ?? 0);
-  });
+// The score's reasons count calendar days; the app shows business days everywhere else.
+export function reasonLabel(text: string, deadline: string | null, today = new Date()) {
+  if (!deadline) return text;
+  const days = businessDaysUntil(deadline, today);
+  const unit = `business day${days === 1 ? "" : "s"}`;
+  return text
+    .replace(/^\d+ days to prepare$/, `${days} ${unit} to prepare`)
+    .replace(/^Only \d+ days left$/, `Only ${days} ${unit} left`)
+    .replace(/^Closes in \d+ days/, `Closes in ${days} ${unit}`);
 }
 
 export const TRIAGE_BATCH = 12;

@@ -53,15 +53,12 @@ function hostOf(url: string) {
 export function Onboarding({ initialCompany, initialDocuments, userId, replay = false }: OnboardingProps) {
   const [created, setCreated] = useState<CompanyProfile | null>(null);
 
-  if (created) return <Flow initial={created} userId={userId} documents={[]} fresh />;
+  if (created) return <Flow initial={created} userId={userId} documents={replay ? initialDocuments : []} fresh />;
   if (initialCompany && replay) {
     return (
-      <Flow
-        initial={initialCompany}
-        userId={userId}
-        documents={initialDocuments}
-        resume={{ step: 0, deferred: [], completed: false }}
-      />
+      <Frame>
+        <StartForm existing={initialCompany} onCreated={setCreated} />
+      </Frame>
     );
   }
   if (initialCompany) return <ResumeGate company={initialCompany} userId={userId} documents={initialDocuments} />;
@@ -89,9 +86,10 @@ function Frame({ progress, right, children }: { progress?: React.ReactNode; righ
   );
 }
 
-function StartForm({ onCreated }: { onCreated: (company: CompanyProfile) => void }) {
-  const [name, setName] = useState("");
-  const [website, setWebsite] = useState("");
+// First screen: name and website. With an existing profile (replay) it updates it instead.
+function StartForm({ existing, onCreated }: { existing?: CompanyProfile; onCreated: (company: CompanyProfile) => void }) {
+  const [name, setName] = useState(existing?.name ?? "");
+  const [website, setWebsite] = useState(existing?.website_url.replace(/^https?:\/\//, "") ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -103,11 +101,18 @@ function StartForm({ onCreated }: { onCreated: (company: CompanyProfile) => void
     }
     setPending(true);
     setError("");
-    const { data, error: insertError } = await createClient()
-      .from("companies")
-      .insert(companyWritePayload({ ...EMPTY_COMPANY, name, website_url: withProtocol(website) }, new Date().toISOString()))
-      .select("*")
-      .single();
+    const table = createClient().from("companies");
+    const now = new Date().toISOString();
+    const { data, error: insertError } = existing?.id
+      ? await table
+          .update(companyPatchPayload({ name, website_url: withProtocol(website) }, now))
+          .eq("id", existing.id)
+          .select("*")
+          .single()
+      : await table
+          .insert(companyWritePayload({ ...EMPTY_COMPANY, name, website_url: withProtocol(website) }, now))
+          .select("*")
+          .single();
     if (insertError || !data) {
       setPending(false);
       setError(insertError?.message || "We couldn't create your profile. Try again.");

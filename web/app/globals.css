@@ -5401,7 +5401,7 @@ a.chat-cite:hover {
   color: var(--warning);
 }
 
-.pipe-closed summary {
+.pipe-fold summary {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -5413,26 +5413,26 @@ a.chat-cite:hover {
   list-style: none;
 }
 
-.pipe-closed summary::-webkit-details-marker {
+.pipe-fold summary::-webkit-details-marker {
   display: none;
 }
 
-.pipe-closed summary::before {
+.pipe-fold summary::before {
   content: "›";
   display: inline-block;
   transition: transform 120ms ease;
 }
 
-.pipe-closed[open] summary::before {
+.pipe-fold[open] summary::before {
   transform: rotate(90deg);
 }
 
-.pipe-closed summary .mono {
+.pipe-fold summary .mono {
   color: var(--text-muted);
   font-weight: 400;
 }
 
-.pipe-closed summary small {
+.pipe-fold summary small {
   margin-left: 4px;
   color: var(--text-muted);
   font-size: 12px;
@@ -5721,4 +5721,140 @@ a.chat-cite:hover {
   width: 14px;
   height: 14px;
   padding: 0;
+}
+
+/* Filter bar: one control height, no native select chrome. */
+.fbar {
+  --fbar-h: 34px;
+}
+
+.fbar .fbar-search {
+  height: 38px;
+  padding: 0 12px;
+}
+
+.fbar .fbar-search svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.fbar .fbar-search input {
+  height: 100%;
+  padding: 0;
+  font-size: 13px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.fbar .fbar-search input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
+.fbar .filter-chip,
+.fbar .fbar-seg,
+.fbar .fbar-select,
+.fbar .fbar-sort select {
+  height: var(--fbar-h);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.fbar .filter-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.fbar .fbar-seg button {
+  height: 100%;
+  padding: 0 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.fbar .fbar-select,
+.fbar .fbar-sort select {
+  padding: 0 30px 0 12px;
+  border: 1px solid var(--control);
+  background: var(--card)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%2377706a' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 11px center;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.fbar .fbar-select-on {
+  border-color: var(--dark);
+}
+
+.fbar .fbar-sort {
+  font-size: 13px;
+}
+
+.fbar .fbar-sort select {
+  height: 38px;
+}
+
+.fbar .swipe-launch {
+  height: 38px;
+}
+
+.fbar .fbar-clear {
+  font-size: 13px;
+}
+
+.fpanel-hint a {
+  color: var(--accent);
+}
+
+.ai-summary-error {
+  overflow-wrap: anywhere;
+}
+
+.pane-head h2 {
+  font-size: 18px;
+}
+
+.fpanel-grid {
+  max-height: min(calc(100vh - 300px), 620px);
+}
+
+/* Key hints: a sans face so the "O" key doesn't read as zero. */
+.tri kbd,
+.tri-btn kbd {
+  font-family: var(--font-plex-sans), sans-serif;
+  font-size: 11px;
+}
+
+.doc-text-error {
+  overflow-wrap: anywhere;
+}
+
+.ai-summary-start {
+  flex-direction: row;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-summary-start:hover {
+  border-color: var(--control-active);
+}
+
+.pipe-fold:not(.pipe-closed) summary {
+  color: var(--text);
+}
+
+.pipe-fold summary::before {
+  width: 10px;
+  color: var(--text-muted);
 }

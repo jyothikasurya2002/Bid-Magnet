@@ -8,7 +8,6 @@ import {
   euroShort,
   matchesSectors,
   sourceLabel,
-  triageOrder,
   weighting,
   DEFAULT_FILTERS,
   detailedCount,
@@ -93,23 +92,6 @@ describe("discover helpers", () => {
     expect(matchesSectors(null, [])).toBe(true);
   });
 
-  it("puts tenders closing within 5 business days first, then best fit", () => {
-    const base: Omit<FeedTender, "tender_id" | "title" | "score" | "deadline_date"> = {
-      reasons: [], has_checklist: false, link: null, source: "placsp", duration: null, duration_unit: null,
-      kind: "open", buyer_name: null, region: null, budget_no_tax: null, deadline_time: null, procedure_label: null,
-    };
-    const friday = new Date(2026, 9, 2);
-    const order = triageOrder(
-      [
-        { ...base, tender_id: "high", title: "a", score: 90, deadline_date: "2026-11-30" },
-        { ...base, tender_id: "urgent-late", title: "b", score: 40, deadline_date: "2026-10-08" },
-        { ...base, tender_id: "urgent-soon", title: "c", score: 60, deadline_date: "2026-10-06" },
-        { ...base, tender_id: "mid", title: "d", score: 70, deadline_date: "2026-11-30" },
-      ],
-      friday,
-    ).map((tender) => tender.tender_id);
-    expect(order).toEqual(["urgent-soon", "urgent-late", "high", "mid"]);
-  });
 });
 
 describe("isStillOpen", () => {

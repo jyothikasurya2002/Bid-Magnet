@@ -54,7 +54,7 @@ export default async function PipelinePage() {
         id: tender.id,
         title: tender.title,
         buyer: tender.buyer_name,
-        budget: tender.budget_no_tax === null ? null : Number(tender.budget_no_tax),
+        budget: Number(tender.budget_no_tax) > 0 ? Number(tender.budget_no_tax) : null,
         deadline: tender.deadline_date,
         deadlineTime: tender.deadline_time,
         decision: row.decision,

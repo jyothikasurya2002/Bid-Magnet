@@ -4,6 +4,7 @@ import { describeExtraction } from "@/lib/evidence";
 import type { CompanyDocument } from "@/lib/types";
 import { DocChip } from "./FactRow";
 import type { PendingUpload } from "./useCompanyDocuments";
+import { dateFormat } from "@/lib/dates";
 
 type DocumentsPanelProps = {
   documents: CompanyDocument[];
@@ -20,7 +21,7 @@ type DocumentsPanelProps = {
   onDismissUpload: (localId: string) => void;
 };
 
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const DATE = dateFormat({ year: "numeric" });
 
 function nifWarning(document: CompanyDocument, companyNif: string) {
   const found = document.extraction?.nif?.replace(/[^A-Z0-9]/gi, "").toUpperCase();

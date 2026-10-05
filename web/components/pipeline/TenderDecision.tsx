@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { TenderSummaryBlock } from "@/components/discover/TenderSummaryBlock";
-import { businessDaysUntil, isStillOpen, type Decision } from "@/lib/discover";
+import { businessDaysUntil, isStillOpen, reasonLabel, type Decision } from "@/lib/discover";
 import { tidyName, type DecisionData, type Rival } from "@/lib/pipeline";
 import { createClient } from "@/lib/supabase/client";
 import type { MatchReason } from "@/lib/types";
 import { TenderChat } from "./TenderChat";
+import { dateFormat } from "@/lib/dates";
 
 const EURO = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-const MONTH = new Intl.DateTimeFormat("en-GB", { month: "short", year: "2-digit" });
-const LONG = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+const DAY = dateFormat({});
+const MONTH = dateFormat({ day: false, year: "2-digit" });
+const LONG = dateFormat({ year: "numeric" });
 const pct = (value: number) => `${Math.round(value * 100)}%`;
 
 const CHOICES: Array<{ value: Decision; label: string }> = [
@@ -130,7 +131,7 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
         <TenderSummaryBlock tenderId={tender.id} compact />
 
         <div className="dec-grid">
-          <FitPanel score={data.score} reasons={data.reasons} />
+          <FitPanel score={data.score} reasons={data.reasons} deadline={tender.deadline} />
           <BuyerPanel data={data} />
           <RivalsPanel rivals={data.rivals} similarCount={data.similarCount} hasBuyer={Boolean(data.buyer)} />
           <PricePanel data={data} />
@@ -165,7 +166,7 @@ function factorTone(reason: MatchReason) {
   return reason.points > 0 ? "ok" : reason.points < 0 ? "warn" : "zero";
 }
 
-function FitPanel({ score, reasons }: { score: number | null; reasons: MatchReason[] }) {
+function FitPanel({ score, reasons, deadline }: { score: number | null; reasons: MatchReason[]; deadline: string | null }) {
   const sorted = [...reasons].sort((a, b) => b.points - a.points);
   const largest = Math.max(1, ...reasons.map((reason) => Math.abs(reason.points)));
   return (
@@ -183,7 +184,7 @@ function FitPanel({ score, reasons }: { score: number | null; reasons: MatchReas
                 <div>
                   <span>
                     {reason.type === "gap" ? <b>Dealbreaker · </b> : null}
-                    {reason.text}
+                    {reasonLabel(reason.text, deadline)}
                   </span>
                   <span className="mono">
                     {reason.points > 0 ? `+${reason.points}` : reason.points < 0 ? `−${Math.abs(reason.points)}` : "0"}
