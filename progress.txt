@@ -70,7 +70,12 @@ The company still submits on the official government platform itself.
   Document checklists with page refs     3 demo tenders done
   Full bid results (ALL bidders' prices  9 tenders done (115 bids), all
   and scores, incl. losers)              page-verified
-  Website / app screens                  Not started (frontend team)
+  Website / app screens                  Built by Miguel + Jyothika (see
+                                         FRONTEND_GUIDE.md)
+  Bid prep: price simulator              Logic built and tested; Miguel builds
+                                         the screen (BID_PREP_HANDOVER.md)
+  Bid prep: proposal drafting            Outline built (free); AI draft built
+                                         (needs the OpenAI key)
 
 
 4. KEY NUMBERS (January–September 2026)
@@ -247,6 +252,13 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-05  Bid prep engine (for Miguel's screen): price simulator ("if we
+              bid X% below budget, how many points, and would we be flagged
+              as abnormally low?") using the tender's own formula and the
+              legal art. 85 rule, with rivals based on past winning discounts;
+              proposal outline per scored criterion (free) and an AI first
+              draft that never invents company facts. Handover:
+              BID_PREP_HANDOVER.md.
   2026-10-05  Architecture diagram for the presentation: architecture.svg /
               architecture.png (application, intelligence, data, sources,
               cross-cutting).

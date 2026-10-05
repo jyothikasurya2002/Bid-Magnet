@@ -174,7 +174,7 @@ FRONTEND (web/, Next.js 16 + supabase-js + OpenAI; built by Miguel)
   Merge into the team via pull request only.
 - Setup: brew node; cd web; npm install --no-package-lock (lock file is out of
   sync on macOS; don't rewrite it); npx next typegen; npm run typecheck; npm test
-  (47 tests). web/.env.local (git-ignored): NEXT_PUBLIC_SUPABASE_URL,
+  (79 tests). web/.env.local (git-ignored): NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY, OPENAI_API_KEY (AI features only).
 - Already built by Miguel: Discover feed + FocusMode (Tinder-style swipe:
   Interested / Later / Not for us), Pipeline + TenderChat (OpenAI, cites PDF
@@ -187,6 +187,18 @@ FRONTEND (web/, Next.js 16 + supabase-js + OpenAI; built by Miguel)
   checklist mode (citations -> pdf url#page) or notice mode (tender_criteria
   OBJ/SUBJ + tender_requirements). SearchAllTenders in Discover (rpc
   search_tenders, lib/search-all.ts + test). FRONTEND_GUIDE.md explains the app.
+- Bid prep engine (logic only; Miguel builds the UI, see BID_PREP_HANDOVER.md):
+  lib/price-sim.ts (+test): discounts d = 1 - offer/budget; formulas
+  lowest_ratio / discount_ratio / linear / logarithmic (+ maxDiscount cap);
+  abnormalFlags = art. 85 RGLCAP in discount points (or below_budget /
+  below_mean / none); formulaFromChecklist + abnormalFromChecklist parse the
+  checklist price text; marketFrom(history, median_bidders) -> rivals;
+  simulate() rows 0-50%; advise() -> safeMax, sweetSpot, atTypical, notes.
+  lib/draft-outline.ts (+test): buildOutline(breakdown, company) -> sections
+  (overview, judgement by points, formula) with write/evidence/[ADD:] gaps;
+  outlineMarkdown(). lib/bid-prep-server.ts: loadBidPrep(supabase, id, company).
+  lib/proposal-draft.ts + POST /api/tenders/[id]/draft {language es|en}
+  (OpenAI, zod schema, placeholders instead of invented facts).
 - Vitest alias '@' breaks because the repo path ends with a space; tests use
   relative imports.
 - Not used by the UI yet: competitor_stats, bidder_history, tender_bids.

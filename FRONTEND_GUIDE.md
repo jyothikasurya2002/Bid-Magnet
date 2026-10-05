@@ -26,7 +26,7 @@ Browser (React pages)
 cd web
 npm install --no-package-lock
 npm run dev        # http://localhost:3000
-npm test           # 59 tests
+npm test           # 79 tests
 ```
 
 ## 2. The pages (the user's journey)
@@ -40,7 +40,8 @@ npm test           # 59 tests
 | **Pipeline** `/pipeline` | Tenders you're interested in, by deadline | `PipelineList` | `tender_decisions`, `tenders` |
 | **"Should we bid?"** `/pipeline/[id]` | Full decision page for one tender (panels below) + Go / Watch / No-go buttons + **Ask AI** side chat | `TenderDecision` + panels, `TenderChat` | see below |
 | **Company** `/company` | The profile as a ledger of facts (value, status, proof), gaps rail ("what holds your matches back"), document vault with AI reading of certificates, website import | `CompanyLedger`, `FactRow`, `GapRail`, `DocumentsPanel`, `WebsiteImport` | `companies`, `company_documents`, storage, `match_tenders`; **AI:** document extraction, research |
-| **Bid prep**, **Outcomes** | Not built yet (greyed out in the menu) | n/a | n/a |
+| **Bid prep** `/bid-prep/[id]` | Price simulator + proposal outline and AI draft. **Logic ready** (`lib/price-sim.ts`, `lib/draft-outline.ts`, `lib/bid-prep-server.ts`, `POST /api/tenders/[id]/draft`); screen to be built by Miguel, see `BID_PREP_HANDOVER.md` | n/a | same as the decision page; **AI:** draft |
+| **Outcomes** | Not built yet (greyed out in the menu) | n/a | n/a |
 
 ### The "Should we bid?" page, panel by panel
 | Panel | Answers | Backend |
@@ -72,8 +73,8 @@ npm test           # 59 tests
 | | Partner finder | ✅ "Bid with a partner" *(new)* |
 | Bid preparation | Tender breakdown + checklist with page citations | ✅ Breakdown *(new)*. Full cited detail only for tenders with a checklist (3 so far) |
 | | Document vault + admin pack | 🟡 Vault + certificate reading ✅; auto-assembled admin pack ❌ |
-| | Technical proposal drafting | ❌ ("Bid prep", not built) |
-| | Price simulator | 🟡 Price panel shows formula and typical discount; no interactive slider |
+| | Technical proposal drafting | 🟡 Outline + AI draft logic ready; screen pending (Miguel) |
+| | Price simulator | 🟡 Simulator logic ready (formula, abnormally-low rule, rivals); screen pending (Miguel) |
 | | Collaboration and export | ❌ |
 | Outcome | Award tracking, win/loss | ❌ ("Outcomes", not built). Bid-results data exists for 9 tenders |
 
@@ -96,6 +97,7 @@ npm test           # 59 tests
   - "Can you bid, and how will you be scored?" breakdown
   - "Bid with a partner" panel
   - search across all open tenders
+  - Bid prep engine: price simulator and proposal drafting logic (UI by Miguel)
   - plus the entire backend and data pipeline the app runs on
 
 ## 5. Good to know
