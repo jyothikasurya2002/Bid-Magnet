@@ -5919,3 +5919,140 @@ a.chat-cite:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Bid breakdown: must-meet / formula / judgement (pipeline decision page) */
+.dec-breakdown {
+  grid-column: 1 / -1;
+}
+
+.bd-split {
+  display: flex;
+  overflow: hidden;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.bd-seg {
+  min-width: max-content;
+  padding: 6px 10px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.bd-seg-price {
+  background: var(--dark);
+}
+
+.bd-seg-formula {
+  background: var(--accent);
+}
+
+.bd-seg-judgement {
+  background: var(--control-active);
+}
+
+.bd-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.bd-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bd-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.bd-title-warn {
+  color: var(--warning);
+}
+
+.bd-step {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  place-items: center;
+}
+
+.bd-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.bd-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bd-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 10px;
+  border-left: 2px solid var(--divider);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.bd-list-check .bd-item::before {
+  content: "☐ ";
+  color: var(--text-muted);
+}
+
+.bd-item-head {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.bd-points {
+  flex: none;
+  color: var(--accent);
+  font-family: var(--font-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 12px;
+}
+
+.bd-detail {
+  color: var(--text-body);
+  font-size: 12px;
+}
+
+.bd-cite {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+  font-family: var(--font-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 11px;
+}
+
+.bd-cite a {
+  color: var(--accent);
+}
+
+.bd-unverified {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--warning-surface);
+  color: var(--warning);
+}

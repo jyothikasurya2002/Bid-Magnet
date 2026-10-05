@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { PartnersPanel } from "./PartnersPanel";
+import { BidBreakdown } from "./BidBreakdown";
+import type { Breakdown } from "@/lib/breakdown";
 import type { PartnerCandidate } from "@/lib/partners";
 import { useState, useSyncExternalStore } from "react";
 import { TenderSummaryBlock } from "@/components/discover/TenderSummaryBlock";
@@ -31,10 +33,12 @@ export function TenderDecision({
   data,
   openChat,
   partners = [],
+  breakdown,
 }: {
   data: DecisionData;
   openChat: boolean;
   partners?: PartnerCandidate[];
+  breakdown?: Breakdown;
 }) {
   const { tender } = data;
   const [decision, setDecision] = useState<Decision | null>(data.decision);
@@ -145,6 +149,7 @@ export function TenderDecision({
           <BuyerPanel data={data} />
           <RivalsPanel rivals={data.rivals} similarCount={data.similarCount} hasBuyer={Boolean(data.buyer)} />
           <PricePanel data={data} />
+          {breakdown ? <BidBreakdown breakdown={breakdown} /> : null}
           <PartnersPanel partners={partners} gaps={data.reasons.filter((reason) => reason.type === "gap").length} />
         </div>
       </main>

@@ -13,6 +13,7 @@ import {
 } from "@/lib/pipeline";
 import type { MatchReason } from "@/lib/types";
 import type { PartnerCandidate } from "@/lib/partners";
+import { buildBreakdown, type NoticeCriterion, type NoticeRequirement } from "@/lib/breakdown";
 
 export const metadata = {
   title: "Should we bid?",
@@ -30,10 +31,10 @@ export default async function PipelineTenderPage(props: PageProps<"/pipeline/[id
     .maybeSingle();
   if (!tender) notFound();
 
-  const [decision, matches, criteria, extraction, documents, buyer, buyerAwards, similar, partners] = await Promise.all([
+  const [decision, matches, criteria, extraction, documents, buyer, buyerAwards, similar, partners, requirements] = await Promise.all([
     supabase.from("tender_decisions").select("decision").eq("company_id", company.id).eq("tender_id", id).maybeSingle(),
     supabase.rpc("match_tenders", { p_company: company.id, p_limit: 2000 }),
-    supabase.from("tender_criteria").select("type,subtype,weight,lot_id").eq("tender_id", id),
+    supabase.from("tender_criteria").select("type,subtype,weight,lot_id,description").eq("tender_id", id),
     supabase
       .from("tender_extractions")
       .select("output")
@@ -56,6 +57,7 @@ export default async function PipelineTenderPage(props: PageProps<"/pipeline/[id
       : Promise.resolve({ data: [] }),
     supabase.rpc("similar_tenders", { p_tender: id, p_limit: 40, only_awarded: true }),
     supabase.rpc("partner_candidates", { p_tender: id, p_company: company.id, p_limit: 5 }),
+    supabase.from("tender_requirements").select("kind,code,description,threshold,lot_id").eq("tender_id", id),
   ]);
 
   const match = ((matches.data || []) as Array<{ tender_id: string; score: number; reasons: MatchReason[] }>).find(
@@ -78,7 +80,17 @@ export default async function PipelineTenderPage(props: PageProps<"/pipeline/[id
 
   return (
     <AppShell active="pipeline" companyName={company.name} userEmail={user.email}>
-      <TenderDecision data={data} openChat={ask === "1"} partners={(partners.data || []) as PartnerCandidate[]} />
+      <TenderDecision
+        data={data}
+        openChat={ask === "1"}
+        partners={(partners.data || []) as PartnerCandidate[]}
+        breakdown={buildBreakdown({
+          checklist: (extraction.data?.output as Record<string, unknown> | null) ?? null,
+          criteria: (criteria.data || []) as NoticeCriterion[],
+          requirements: (requirements.data || []) as NoticeRequirement[],
+          documents: (documents.data || []) as Array<{ kind: string; name: string | null; url: string }>,
+        })}
+      />
     </AppShell>
   );
 }
