@@ -11,6 +11,7 @@ import {
   type Decision,
   type FeedTender,
 } from "@/lib/discover";
+import { RiskNote } from "./RiskNote";
 import { useTenderSummary } from "./useTenderSummary";
 import { dateFormat } from "@/lib/dates";
 
@@ -612,6 +613,8 @@ function TriageCard({ tender }: { tender: FeedTender }) {
           .filter(Boolean)
           .join(" · ")}
       </p>
+
+      {tender.risk ? <RiskNote risk={tender.risk} compact /> : null}
 
       {stoppers.length ? (
         <ul className="tri-stoppers">

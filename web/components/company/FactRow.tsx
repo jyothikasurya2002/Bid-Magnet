@@ -120,10 +120,10 @@ export function FactRow({
             {value}
           </div>
           <div role="cell" className="fact-status">
-            {status ? <StatusPill status={status} /> : <span className="fact-empty">—</span>}
+            {status ? <StatusPill status={status} /> : <span className="sr-only">None</span>}
           </div>
           <div role="cell" className="fact-proof">
-            {proof ?? <span className="fact-empty">—</span>}
+            {proof ?? <span className="sr-only">None</span>}
           </div>
           <div role="cell" className="fact-action">
             {action ??

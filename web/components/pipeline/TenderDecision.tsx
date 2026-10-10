@@ -9,6 +9,8 @@ import { createClient } from "@/lib/supabase/client";
 import type { MatchReason } from "@/lib/types";
 import { ScoutChat } from "@/components/scout/ScoutChat";
 import { ScoutLayout } from "@/components/scout/ScoutLayout";
+import { RiskNote } from "@/components/discover/RiskNote";
+import type { CompetitionRisk } from "@/lib/competition-risk";
 import { dateFormat } from "@/lib/dates";
 
 const EURO = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -33,7 +35,7 @@ const SUGGESTIONS = [
 ];
 
 // 3a: score, buyer, rivals and price in one view, with the AI chat alongside.
-export function TenderDecision({ data, openChat }: { data: DecisionData; openChat: boolean }) {
+export function TenderDecision({ data, openChat, risk }: { data: DecisionData; openChat: boolean; risk: CompetitionRisk | null }) {
   const { tender } = data;
   const [decision, setDecision] = useState<Decision | null>(data.decision);
   const [saving, setSaving] = useState(false);
@@ -122,7 +124,7 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
 
           <div className="dec-actions">
             <button type="button" className="dec-ask" onClick={() => setChat(!chatOpen)} aria-expanded={chatOpen}>
-              <span aria-hidden="true">✦</span> Ask Scout about this tender
+              <span aria-hidden="true">✦</span> Ask Scout
             </button>
             <div className="dec-choice" role="group" aria-label="Your decision">
               {CHOICES.map((choice) => (
@@ -156,6 +158,8 @@ export function TenderDecision({ data, openChat }: { data: DecisionData; openCha
             </Link>
           </p>
         ) : null}
+
+        {risk ? <RiskNote risk={risk} /> : null}
 
         <TenderSummaryBlock tenderId={tender.id} compact />
 
@@ -252,7 +256,7 @@ function FitPanel({
 function BuyerPanel({ data }: { data: DecisionData }) {
   const { buyer, previous } = data;
   return (
-    <Panel title={`Buyer · ${data.tender.buyer ?? "unknown"}`}>
+    <Panel title="Buyer">
       {buyer ? (
         <div className="dec-stats">
           <div>
@@ -336,12 +340,11 @@ function PricePanel({ data }: { data: DecisionData }) {
       className="dec-price"
       title={
         <>
-          <span>Winning discounts · {data.discountScope === "buyer" ? "this buyer’s IT awards" : "similar contracts elsewhere"}</span>
-          {data.pricePoints ? (
-            <span className="dec-label-aside">
-              Price is {data.pricePoints} pts{data.judgementPoints ? ` · judgement ${data.judgementPoints} pts` : ""}
-            </span>
-          ) : null}
+          <span>Winning discounts</span>
+          <span className="dec-label-aside">
+            {data.discountScope === "buyer" ? "This buyer’s IT awards" : "Similar contracts elsewhere"}
+            {data.pricePoints ? ` · price is ${data.pricePoints} pts${data.judgementPoints ? `, judgement ${data.judgementPoints} pts` : ""}` : ""}
+          </span>
         </>
       }
     >

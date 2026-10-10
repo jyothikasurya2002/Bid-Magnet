@@ -46,9 +46,9 @@ export function AppShell({ active, companyName, userEmail, children }: AppShellP
         </nav>
 
         <div className="account-menu">
-          <span className="account-copy">
-            {companyName ? <strong>{companyName}</strong> : null}
-            {userEmail ? <small>{userEmail}</small> : null}
+          {/* The email is in the tooltip; it shows on its own only before a company exists. */}
+          <span className="account-copy" title={userEmail}>
+            {companyName ? <strong>{companyName}</strong> : userEmail ? <small>{userEmail}</small> : null}
           </span>
           <form action={signOut}>
             <button className="text-button" type="submit">

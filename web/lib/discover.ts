@@ -1,3 +1,5 @@
+import type { CompetitionRisk } from "./competition-risk";
+
 // Formatting and filtering for the Discover feed.
 
 export type Decision = "go" | "no_go" | "watch";
@@ -25,6 +27,7 @@ export type FeedTender = {
   has_lots?: boolean | null;
   price_points?: number | null;
   judgement_points?: number | null;
+  risk?: CompetitionRisk | null; // signs it's already meant for someone
   // renewals only
   incumbent?: string | null;
   estimated_end?: string | null;
@@ -143,6 +146,7 @@ export type Filters = {
   smallSimplified: boolean;
   singleContract: boolean;
   hideFrameworks: boolean;
+  hidePrearranged: boolean; // hide tenders that look already meant for someone
   platforms: string[];
 };
 
@@ -163,6 +167,7 @@ export const DEFAULT_FILTERS: Filters = {
   smallSimplified: false,
   singleContract: false,
   hideFrameworks: false,
+  hidePrearranged: false,
   platforms: [],
 };
 
@@ -221,6 +226,7 @@ export function detailedCount(filters: Filters) {
     filters.smallSimplified,
     filters.singleContract,
     filters.hideFrameworks,
+    filters.hidePrearranged,
     filters.platforms.length,
   ].filter(Boolean).length;
 }
@@ -258,7 +264,9 @@ export function applyFilters(tenders: FeedTender[], filters: Filters, myRegions:
       if (filters.duration === "mid" && (months <= 12 || months > 36)) return false;
       if (filters.duration === "long" && months <= 36) return false;
     }
-    if (filters.lowCompetition && !hasReason(tender, "Low competition")) return false;
+    // Few bidders is an opportunity, unless the buyer's favourite usually takes it.
+    if (filters.lowCompetition && (!hasReason(tender, "Low competition") || tender.risk?.level === "high")) return false;
+    if (filters.hidePrearranged && tender.risk?.level === "high") return false;
     if (filters.smallSimplified && !hasReason(tender, "Small simplified tender")) return false;
     if (filters.singleContract && tender.has_lots) return false;
     if (filters.hideFrameworks && isFramework(tender.title)) return false;

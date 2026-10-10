@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ScoutChat, type ScoutChatHandle, type ScoutRequest } from "@/components/scout/ScoutChat";
 import { ScoutLayout } from "@/components/scout/ScoutLayout";
-import { readRaw, subscribe, usePlanState } from "./plan-store";
+import { readRaw, subscribe, usePlanState, useStored } from "./plan-store";
+import { pct, PriceTab, priceKey, type SavedPrice } from "./PriceSimulator";
+import { ProposalOutline } from "./ProposalOutline";
 import {
   myTasks,
   progress,
@@ -17,7 +19,9 @@ import {
   type TaskState,
   type TaskStatus,
 } from "@/lib/bid-plan";
+import type { BidPrice } from "@/lib/bid-prep-server";
 import { dateFormat } from "@/lib/dates";
+import type { OutlineSection, ProposalOutline as Outline } from "@/lib/draft-outline";
 import { businessDaysUntil, isStillOpen, type Decision } from "@/lib/discover";
 import { scoutKey, type ScoutStore } from "@/lib/scout-threads";
 import type { ChatDocument } from "@/lib/tender-chat";
@@ -37,10 +41,15 @@ type TenderInfo = {
 
 export type Me = { id: string; name: string };
 
+export type BidView = "plan" | "price" | "proposal";
+
 type Props = {
   companyId: string;
   me: Me;
   initialTask: string | null;
+  initialView: BidView;
+  outline: Outline;
+  price: Promise<BidPrice>;
   decision: Decision | null;
   plan: BidPlan;
   documents: ChatDocument[];
@@ -145,8 +154,10 @@ function barLabel(task: PlanTask, status: TaskStatus, overdue: boolean, question
 
 // ---------- page ----------
 
-export function BidPlanView({ companyId, me, initialTask, decision, plan, documents, tender }: Props) {
+export function BidPlanView({ companyId, me, initialTask, initialView, outline, price, decision, plan, documents, tender }: Props) {
   const [state, update] = usePlanState(companyId, tender.id);
+  const [view, setView] = useState<BidView>(initialTask ? "plan" : initialView);
+  const [savedPrice] = useStored<SavedPrice>(priceKey(companyId, tender.id));
   const talked = useTalkedAbout(companyId, tender.id);
   const [open, setOpen] = useState<string | null>(initialTask);
   const [chatOpen, setChatOpen] = useState(false);
@@ -167,6 +178,7 @@ export function BidPlanView({ companyId, me, initialTask, decision, plan, docume
   }, [initialTask]);
 
   function show(id: string) {
+    choose("plan");
     setOpen(id);
     requestAnimationFrame(() => document.getElementById(`task-${id}`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
   }
@@ -175,6 +187,52 @@ export function BidPlanView({ companyId, me, initialTask, decision, plan, docume
   function scout(task: PlanTask | null, question?: string) {
     setChatOpen(true);
     chatRef.current?.show(task ? topicFor(task, tender.platform) : null, question);
+  }
+
+  // The tab lives in the URL (?view=price) so a reload or a shared link lands on it.
+  function choose(next: BidView) {
+    setView(next);
+    const url = new URL(window.location.href);
+    if (next === "plan") url.searchParams.delete("view");
+    else url.searchParams.set("view", next);
+    url.searchParams.delete("task");
+    window.history.replaceState(null, "", url);
+  }
+
+  const priceTask = tasks.find((task) => task.kind === "price") ?? null;
+  const gaps = outline.sections.reduce((sum, section) => sum + section.gaps.length, 0);
+
+  // Draft tasks are "Write: <criterion>" and commitments "Decide: <criterion>", named like the outline's sections.
+  function taskFor(section: OutlineSection) {
+    const name = section.title.trim().toLowerCase();
+    return (
+      tasks.find((task) => (task.kind === "draft" || task.kind === "commitment") && task.title.replace(/^(Write|Decide):\s*/, "").trim().toLowerCase() === name) ??
+      null
+    );
+  }
+
+  function workbenchFor(task: PlanTask): Workbench | null {
+    if (task.kind === "price") {
+      return {
+        label: "Open the price simulator",
+        hint:
+          savedPrice?.discount !== undefined && tender.budget !== null
+            ? `Your price: ${pct(savedPrice.discount)} off · ${EURO.format(tender.budget * (1 - savedPrice.discount))}`
+            : "Try discounts against likely rivals and the abnormally-low line",
+        onClick: () => choose("price"),
+      };
+    }
+    if (task.kind !== "draft" && task.kind !== "commitment") return null;
+    const section = outline.sections.find((item) => taskFor(item)?.id === task.id);
+    if (!section) return null;
+    return {
+      label: "Open it in the proposal outline",
+      hint: `${section.write.length} thing${section.write.length === 1 ? "" : "s"} to cover · ${section.gaps.length} to fill in`,
+      onClick: () => {
+        choose("proposal");
+        requestAnimationFrame(() => document.getElementById(`prop-${section.key}`)?.scrollIntoView({ block: "start", behavior: "smooth" }));
+      },
+    };
   }
 
   const docUrl = (cite: Cite | null) => {
@@ -227,12 +285,6 @@ export function BidPlanView({ companyId, me, initialTask, decision, plan, docume
           </div>
           <div className="bid-stats">
             <div>
-              <span>Checklist</span>
-              <b className="mono">
-                {hydrated ? done : "–"} / {total}
-              </b>
-            </div>
-            <div>
               <span>Deadline</span>
               <b className={closed || (days !== null && days <= 5) ? "bid-deadline bid-deadline-urgent" : "bid-deadline"}>
                 {tender.deadline ? `${SHORT.format(date(tender.deadline))}${tender.deadlineTime ? `, ${tender.deadlineTime.slice(0, 5)}` : ""}` : "Not given"}
@@ -256,122 +308,183 @@ export function BidPlanView({ companyId, me, initialTask, decision, plan, docume
           </p>
         ) : null}
 
-        <YourTasks mine={mine} days={plan.days} groups={plan.groups} onOpen={show} onDone={(id) => update(id, { status: "done" })} />
-
-        <ScoutFlags plan={plan} tasks={tasks} missing={missing} overdue={hydrated ? overdue.length : 0} onScout={scout} onOpen={setOpen} />
-
-        <Timeline
-          plan={plan}
-          me={me}
-          state={state}
-          talked={talked}
-          hydrated={hydrated}
-          open={open}
-          platform={tender.platform}
-          onToggle={(id) => setOpen(open === id ? null : id)}
-          onUpdate={update}
-          onScout={scout}
-          docUrl={docUrl}
-        />
-
-        <div className="bid-grid">
-          {plan.risks.length || plan.notes.length ? (
-            <section className="dec-panel">
-              <h2 className="dec-label">What could get you excluded</h2>
-              <ul className="bid-notes">
-                {plan.risks.map((risk) => (
-                  <li key={risk.text}>
-                    {risk.text} <CiteLink cite={risk.cite} href={docUrl(risk.cite)} />
-                  </li>
-                ))}
-              </ul>
-              {plan.notes.length ? (
-                <>
-                  <h3 className="bid-sub">Scout’s notes from the pliegos</h3>
-                  <ul className="bid-notes bid-notes-muted">
-                    {plan.notes.map((note) => (
-                      <li key={note.text}>{note.text}</li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
-            </section>
-          ) : null}
-
-          <section className="dec-panel">
-            <h2 className="dec-label">Price & dates</h2>
-            {plan.price ? (
-              <dl className="bid-facts">
-                {plan.price.explained ? (
-                  <div>
-                    <dt>How price is scored</dt>
-                    <dd>
-                      {plan.price.explained} <CiteLink cite={plan.price.cite} href={docUrl(plan.price.cite)} />
-                    </dd>
-                  </div>
-                ) : null}
-                {plan.price.formula ? (
-                  <div>
-                    <dt>Formula</dt>
-                    <dd className="mono">{plan.price.formula}</dd>
-                  </div>
-                ) : null}
-                {plan.price.abnormallyLow ? (
-                  <div>
-                    <dt>Abnormally low</dt>
-                    <dd>{plan.price.abnormallyLow}</dd>
-                  </div>
-                ) : null}
-                {plan.price.guarantee ? (
-                  <div>
-                    <dt>Guarantees</dt>
-                    <dd>{plan.price.guarantee}</dd>
-                  </div>
-                ) : null}
-              </dl>
-            ) : (
-              <p className="dec-muted">
-                The price formula is in the PCAP.{" "}
-                <button
-                  type="button"
-                  className="link-button link-strong"
-                  onClick={() => scout(null, "How is price scored in this tender, and what is the abnormally-low threshold?")}
-                >
-                  Ask Scout to find it
-                </button>
-              </p>
-            )}
-            {plan.keyDates.length ? (
-              <ul className="bid-dates">
-                {plan.keyDates.map((item) => (
-                  <li key={item.label}>
-                    <span className="mono">{item.date ? SHORT.format(date(item.date)) : "—"}</span>
-                    <span>
-                      {item.label} <CiteLink cite={item.cite} href={docUrl(item.cite)} />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </section>
-
-          {plan.afterAward.length || plan.submission ? (
-            <section className="dec-panel">
-              <h2 className="dec-label">Submitting, and if you win</h2>
-              {plan.submission ? <p className="bid-text">{plan.submission}</p> : null}
-              {plan.afterAward.length ? (
-                <>
-                  <h3 className="bid-sub">Only the winner hands these in, after the award</h3>
-                  <ul className="bid-notes bid-notes-muted">
-                    {plan.afterAward.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </>
-              ) : null}
-            </section>
-          ) : null}
+        <div className="bid-tabs" role="tablist" aria-label="Bid prep">
+          {(
+            [
+              ["plan", "Plan", hydrated ? `${done} of ${total} done` : `${total} tasks`],
+              ["price", "Price", hydrated && savedPrice?.discount !== undefined ? `${pct(savedPrice.discount)} off` : "Simulator"],
+              ["proposal", "Proposal", `${outline.sections.length} sections${gaps ? ` · ${gaps} to fill in` : ""}`],
+            ] as Array<[BidView, string, string]>
+          ).map(([key, label, hint]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              id={`bid-tab-${key}`}
+              aria-selected={view === key}
+              aria-controls={`bid-view-${key}`}
+              onClick={() => choose(key)}
+            >
+              <b>{label}</b>
+              <small>{hint}</small>
+            </button>
+          ))}
         </div>
+
+        {view === "price" ? (
+          <div role="tabpanel" id="bid-view-price" aria-labelledby="bid-tab-price">
+            <PriceTab
+              price={price}
+              companyId={companyId}
+              tenderId={tender.id}
+              priceHref={docUrl(plan.price?.cite ?? null)}
+              onAsk={(question) => scout(priceTask, question)}
+            />
+          </div>
+        ) : null}
+
+        {view === "proposal" ? (
+          <div role="tabpanel" id="bid-view-proposal" aria-labelledby="bid-tab-proposal">
+            <ProposalOutline
+              outline={outline}
+              companyId={companyId}
+              tenderId={tender.id}
+              tenderTitle={tender.title}
+              taskFor={taskFor}
+              onOpenTask={show}
+              onAsk={(section) =>
+                scout(taskFor(section), `Help me write the “${section.title}” section: what should it say to score well here, using only what we actually have?`)
+              }
+            />
+          </div>
+        ) : null}
+
+        {view === "plan" ? (
+          <div role="tabpanel" id="bid-view-plan" aria-labelledby="bid-tab-plan" className="bid-view">
+          <YourTasks mine={mine} days={plan.days} groups={plan.groups} onOpen={show} onDone={(id) => update(id, { status: "done" })} />
+
+          <ScoutFlags plan={plan} tasks={tasks} missing={missing} overdue={hydrated ? overdue.length : 0} onScout={scout} onOpen={setOpen} />
+
+          <Timeline
+            plan={plan}
+            me={me}
+            state={state}
+            talked={talked}
+            hydrated={hydrated}
+            open={open}
+            platform={tender.platform}
+            onToggle={(id) => setOpen(open === id ? null : id)}
+            onUpdate={update}
+            onScout={scout}
+            docUrl={docUrl}
+            workbenchFor={workbenchFor}
+          />
+
+          <div className="bid-grid">
+            {plan.risks.length || plan.notes.length ? (
+              <section className="dec-panel">
+                <h2 className="dec-label">What could get you excluded</h2>
+                <ul className="bid-notes">
+                  {plan.risks.map((risk) => (
+                    <li key={risk.text}>
+                      {risk.text} <CiteLink cite={risk.cite} href={docUrl(risk.cite)} />
+                    </li>
+                  ))}
+                </ul>
+                {plan.notes.length ? (
+                  <>
+                    <h3 className="bid-sub">Scout’s notes from the pliegos</h3>
+                    <ul className="bid-notes bid-notes-muted">
+                      {plan.notes.map((note) => (
+                        <li key={note.text}>{note.text}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </section>
+            ) : null}
+
+            <section className="dec-panel">
+              <h2 className="dec-label">
+                Price & dates
+                <button type="button" className="link-button dec-label-aside" onClick={() => choose("price")}>
+                  Price simulator →
+                </button>
+              </h2>
+              {plan.price ? (
+                <dl className="bid-facts">
+                  {plan.price.explained ? (
+                    <div>
+                      <dt>How price is scored</dt>
+                      <dd>
+                        {plan.price.explained} <CiteLink cite={plan.price.cite} href={docUrl(plan.price.cite)} />
+                      </dd>
+                    </div>
+                  ) : null}
+                  {plan.price.formula ? (
+                    <div>
+                      <dt>Formula</dt>
+                      <dd className="mono">{plan.price.formula}</dd>
+                    </div>
+                  ) : null}
+                  {plan.price.abnormallyLow ? (
+                    <div>
+                      <dt>Abnormally low</dt>
+                      <dd>{plan.price.abnormallyLow}</dd>
+                    </div>
+                  ) : null}
+                  {plan.price.guarantee ? (
+                    <div>
+                      <dt>Guarantees</dt>
+                      <dd>{plan.price.guarantee}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              ) : (
+                <p className="dec-muted">
+                  The price formula is in the PCAP.{" "}
+                  <button
+                    type="button"
+                    className="link-button link-strong"
+                    onClick={() => scout(null, "How is price scored in this tender, and what is the abnormally-low threshold?")}
+                  >
+                    Ask Scout to find it
+                  </button>
+                </p>
+              )}
+              {plan.keyDates.length ? (
+                <ul className="bid-dates">
+                  {plan.keyDates.map((item) => (
+                    <li key={item.label}>
+                      <span className="mono">{item.date ? SHORT.format(date(item.date)) : "—"}</span>
+                      <span>
+                        {item.label} <CiteLink cite={item.cite} href={docUrl(item.cite)} />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+
+            {plan.afterAward.length || plan.submission ? (
+              <section className="dec-panel">
+                <h2 className="dec-label">Submitting, and if you win</h2>
+                {plan.submission ? <p className="bid-text">{plan.submission}</p> : null}
+                {plan.afterAward.length ? (
+                  <>
+                    <h3 className="bid-sub">Only the winner hands these in, after the award</h3>
+                    <ul className="bid-notes bid-notes-muted">
+                      {plan.afterAward.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </section>
+            ) : null}
+          </div>
+          </div>
+        ) : null}
       </main>
     </ScoutLayout>
   );
@@ -555,6 +668,7 @@ function Timeline({
   onUpdate,
   onScout,
   docUrl,
+  workbenchFor,
 }: {
   plan: BidPlan;
   me: Me;
@@ -567,6 +681,7 @@ function Timeline({
   onUpdate: (id: string, patch: TaskState) => void;
   onScout: (task: PlanTask | null, question?: string) => void;
   docUrl: (cite: Cite | null) => string | null;
+  workbenchFor: (task: PlanTask) => Workbench | null;
 }) {
   const last = plan.days.length - 1;
   const columns = { "--days": plan.days.length } as React.CSSProperties;
@@ -705,6 +820,7 @@ function Timeline({
                         onUpdate={(patch) => onUpdate(task.id, patch)}
                         onScout={(question) => onScout(task, question)}
                         href={docUrl(task.cite)}
+                        workbench={workbenchFor(task)}
                       />
                     ) : null}
                   </div>
@@ -721,6 +837,8 @@ function Timeline({
   );
 }
 
+type Workbench = { label: string; hint: string; onClick: () => void };
+
 function TaskDetail({
   task,
   me,
@@ -734,6 +852,7 @@ function TaskDetail({
   onUpdate,
   onScout,
   href,
+  workbench,
 }: {
   task: PlanTask;
   me: Me;
@@ -747,6 +866,7 @@ function TaskDetail({
   onUpdate: (patch: TaskState) => void;
   onScout: (question?: string) => void;
   href: string | null;
+  workbench: Workbench | null;
 }) {
   // A parsed scoring table replaces the sentence it came from.
   const lines = task.options.length ? [] : (task.detail || "").split("\n").filter(Boolean);
@@ -754,6 +874,12 @@ function TaskDetail({
   return (
     <div className="bid-detail">
       <div className="bid-detail-main">
+        {workbench ? (
+          <button type="button" className="bid-workbench" onClick={workbench.onClick}>
+            <b>{workbench.label} →</b>
+            <span>{workbench.hint}</span>
+          </button>
+        ) : null}
         <dl className="bid-detail-facts">
           {task.facts.map((fact) => (
             <div

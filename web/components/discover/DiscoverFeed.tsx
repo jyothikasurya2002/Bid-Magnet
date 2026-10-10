@@ -19,6 +19,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { FilterBar } from "./FilterBar";
 import { FocusMode } from "./FocusMode";
+import { RiskChip } from "./RiskNote";
 import { TenderPane } from "./TenderPane";
 import { dateFormat, SPAIN_TIME } from "@/lib/dates";
 
@@ -187,8 +188,8 @@ export function DiscoverFeed({
                 {label}
               </button>
             ))}
-            <span className="discover-updated">
-              {updatedAt ? `Updated ${TIME.format(new Date(updatedAt))} · ` : ""}national + regional platforms
+            <span className="discover-updated" title="Every IT tender from the national and regional platforms, imported each morning">
+              {updatedAt ? `Updated ${TIME.format(new Date(updatedAt))}` : "National + regional platforms"}
             </span>
           </div>
 
@@ -258,14 +259,16 @@ export function DiscoverFeed({
                 <span className="feed-title">
                   <span className="feed-title-line">
                     <span className="feed-title-text">{tender.title}</span>
-                    {tender.kind === "renewal" ? <span className="tag-badge tag-good">Renewal</span> : null}
-                    {tender.kind === "signal" ? <span className="tag-badge">Early signal</span> : null}
-                    {tender.has_checklist ? <span className="tag-badge tag-good">Checklist</span> : null}
+                    {/* The Renewals and Early signals tabs already say what these are. */}
+                    {tender.kind === "renewal" && tab !== "renewals" ? <span className="tag-badge tag-good">Renewal</span> : null}
+                    {tender.kind === "signal" && tab !== "signals" ? <span className="tag-badge">Early signal</span> : null}
+                    {tender.risk ? <RiskChip risk={tender.risk} /> : null}
                   </span>
                   <span className="feed-buyer">
                     {tender.kind === "renewal" && tender.incumbent
                       ? `${tender.buyer_name} · held by ${tender.incumbent}`
                       : tender.buyer_name}
+                    {tender.has_checklist ? <span className="feed-checklist"> · ✓ checklist</span> : null}
                   </span>
                 </span>
                 <span className="feed-source">{sourceLabel(tender.source, tender.link, tender.region)}</span>
