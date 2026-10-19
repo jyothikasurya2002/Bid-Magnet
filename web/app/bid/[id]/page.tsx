@@ -2,9 +2,12 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 import { BidPlanView } from "@/components/bid/BidPlanView";
 import { buildPlan, type Checklist, type NoticeCriterion, type NoticeRequirement } from "@/lib/bid-plan";
+import { breakdownOf, priceOf } from "@/lib/bid-prep-server";
 import { displayName, requireCompany } from "@/lib/company-server";
-import { buyerStats, tenderBundle } from "@/lib/data-cache";
+import { buyerAwards, buyerStats, similarAwarded, tenderBundle } from "@/lib/data-cache";
 import { durationLabel, sourceLabel, todayInSpain, type Decision } from "@/lib/discover";
+import { buildOutline } from "@/lib/draft-outline";
+import type { AwardRow, BuyerStats, SimilarAward } from "@/lib/pipeline";
 import type { ChatDocument } from "@/lib/tender-chat";
 
 export const metadata = {
@@ -13,7 +16,7 @@ export const metadata = {
 
 export default async function BidPlanPage(props: PageProps<"/bid/[id]">) {
   const { id } = await props.params;
-  const { task } = await props.searchParams;
+  const { task, view } = await props.searchParams;
   const { supabase, user, company } = await requireCompany();
 
   const bundle = await tenderBundle(supabase, id);
@@ -23,8 +26,13 @@ export default async function BidPlanPage(props: PageProps<"/bid/[id]">) {
   const [decision, vault, stats] = await Promise.all([
     supabase.from("tender_decisions").select("decision").eq("company_id", company.id).eq("tender_id", id).maybeSingle(),
     supabase.from("company_documents").select("document_type").eq("company_id", company.id),
-    buyerStats<{ median_discount: number | string | null; median_bidders: number | string | null }>(supabase, tender.buyer_nif),
+    buyerStats<BuyerStats>(supabase, tender.buyer_nif),
   ]);
+  const breakdown = breakdownOf(bundle);
+  // Past discounts take a few seconds on a cold cache: the Price tab streams them in.
+  const price = Promise.all([buyerAwards<AwardRow>(supabase, tender.buyer_nif), similarAwarded<SimilarAward>(supabase, id)]).then(([awards, similar]) =>
+    priceOf({ bundle, breakdown, stats, awards, similar }),
+  );
   const budget = Number(tender.budget_no_tax) > 0 ? Number(tender.budget_no_tax) : null;
 
   const platform = sourceLabel(tender.source, tender.link, tender.region);
@@ -53,6 +61,9 @@ export default async function BidPlanPage(props: PageProps<"/bid/[id]">) {
         companyId={company.id!}
         me={{ id: user.id, name: displayName(user.email) }}
         initialTask={typeof task === "string" ? task : null}
+        initialView={view === "price" || view === "proposal" ? view : "plan"}
+        outline={buildOutline(breakdown, company)}
+        price={price}
         decision={(decision.data?.decision as Decision | undefined) ?? null}
         plan={plan}
         documents={bundle.documents.filter((doc) => doc.kind === "pcap" || doc.kind === "ppt") as ChatDocument[]}

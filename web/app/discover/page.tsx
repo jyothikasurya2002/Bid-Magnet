@@ -4,6 +4,7 @@ import { DiscoverFeed } from "@/components/discover/DiscoverFeed";
 import { isStillOpen, matchesSectors, todayInSpain, type Decision, type FeedTender } from "@/lib/discover";
 import { summarizeAwards, withTrackRecord } from "@/lib/award-history";
 import { requireCompany } from "@/lib/company-server";
+import { buyerRecord, competitionRisk } from "@/lib/competition-risk";
 import { companyAwards, companyMatches, rowsForTenders, sharedList } from "@/lib/data-cache";
 import type { MatchReason } from "@/lib/types";
 
@@ -66,13 +67,14 @@ type DetailRow = Pick<TenderRow, "id" | "source" | "link" | "duration" | "durati
   contract_type_label: string | null;
   has_lots: boolean | null;
   buyer_nif: string | null;
+  urgency: string | null;
 };
 type CriterionRow = { tender_id: string; type: string | null; subtype: string | null; weight: number | null; lot_id: string | null };
 
 async function loadDetails(supabase: SupabaseClient, ids: string[]) {
   const { data, error } = await supabase
     .from("tenders")
-    .select("id,source,link,duration,duration_unit,deadline_time,it_segment,contract_type_label,has_lots,buyer_nif")
+    .select("id,source,link,duration,duration_unit,deadline_time,it_segment,contract_type_label,has_lots,buyer_nif,urgency:extra->>urgency_code")
     .in("id", ids);
   if (error) throw new Error(error.message);
   return (data || []) as DetailRow[];
@@ -91,6 +93,28 @@ async function loadCriteria(supabase: SupabaseClient, ids: string[]) {
   const failed = batches.find((batch) => batch.error);
   if (failed?.error) throw new Error(failed.error.message);
   return batches.flatMap((batch) => (batch.data || []) as CriterionRow[]);
+}
+
+type BuyerRow = {
+  buyer_nif: string;
+  awards: number | string | null;
+  median_bidders: number | string | null;
+  top_winners: Array<{ name: string | null; nif: string | null; wins: number }> | null;
+};
+
+// Each buyer's track record, for the "looks pre-arranged" check. Batched like the criteria.
+async function loadBuyers(supabase: SupabaseClient, nifs: string[]) {
+  const batches = await Promise.all(
+    Array.from({ length: Math.ceil(nifs.length / 100) }, (_, batch) =>
+      supabase
+        .from("buyer_stats")
+        .select("buyer_nif,awards,median_bidders,top_winners")
+        .in("buyer_nif", nifs.slice(batch * 100, batch * 100 + 100)),
+    ),
+  );
+  const failed = batches.find((batch) => batch.error);
+  if (failed?.error) throw new Error(failed.error.message);
+  return batches.flatMap((batch) => (batch.data || []) as BuyerRow[]);
 }
 
 export default async function DiscoverPage() {
@@ -145,6 +169,8 @@ export default async function DiscoverPage() {
     extraIds.length ? supabase.from("tenders").select(TENDER_FIELDS).in("id", extraIds) : Promise.resolve({ data: [] }),
   ]);
   const detail = new Map(details.map((row) => [row.id, row]));
+  const nifs = [...new Set(details.map((row) => row.buyer_nif).filter((nif): nif is string => Boolean(nif)))];
+  const buyers = new Map((await rowsForTenders(supabase, "discover-buyers", nifs, loadBuyers)).map((row) => [row.buyer_nif, buyerRecord(row)]));
 
   const criteriaByTender = new Map<string, CriterionRow[]>();
   for (const row of criteriaRows) {
@@ -177,6 +203,12 @@ export default async function DiscoverPage() {
       has_lots: extra?.has_lots ?? null,
       price_points: points(row.tender_id).price,
       judgement_points: points(row.tender_id).judgement,
+      risk: competitionRisk({
+        procedure: row.procedure_label,
+        urgency: extra?.urgency ?? null,
+        buyer: (extra?.buyer_nif && buyers.get(extra.buyer_nif)) || null,
+        companyNif: company.nif,
+      }),
       kind: "open" as const,
     };
   })

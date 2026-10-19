@@ -11,6 +11,7 @@ import {
   type FeedTender,
 } from "@/lib/discover";
 import { createClient } from "@/lib/supabase/client";
+import { RiskNote } from "./RiskNote";
 import { TenderSummaryBlock } from "./TenderSummaryBlock";
 import { dateFormat } from "@/lib/dates";
 
@@ -88,6 +89,8 @@ export function TenderPane({ tender, decision, onDecide, onClose, autoSummary = 
           </a>
         ) : null}
       </div>
+
+      {tender.risk ? <RiskNote risk={tender.risk} /> : null}
 
       <div className="pane-facts">
         {tender.kind === "renewal" ? (

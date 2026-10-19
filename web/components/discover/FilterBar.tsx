@@ -335,6 +335,9 @@ function MorePanel({
           <Check checked={filters.smallSimplified} onChange={(smallSimplified) => set({ smallSimplified })}>
             Small tenders with no turnover or experience proof
           </Check>
+          <Check checked={filters.hidePrearranged} onChange={(hidePrearranged) => set({ hidePrearranged })}>
+            Hide tenders that look pre-arranged
+          </Check>
         </section>
         <section>
           <h3>Structure</h3>
@@ -373,6 +376,7 @@ function MorePanel({
               smallSimplified: false,
               singleContract: false,
               hideFrameworks: false,
+              hidePrearranged: false,
               platforms: [],
             })
           }

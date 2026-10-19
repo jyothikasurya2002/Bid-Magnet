@@ -64,3 +64,24 @@ export function usePlanStates(companyId: string, tenderIds: string[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raw]);
 }
+
+// Any other JSON value kept per tender in this browser (the price simulator, the AI draft).
+export function useStored<T>(key: string) {
+  const raw = useSyncExternalStore(subscribe, () => readRaw(key), () => "{}");
+  const value = useMemo(() => {
+    try {
+      const parsed = JSON.parse(raw) as T | Record<string, never>;
+      return parsed && Object.keys(parsed).length ? (parsed as T) : null;
+    } catch {
+      return null;
+    }
+  }, [raw]);
+  const save = (next: T | null) => {
+    try {
+      if (next === null) window.localStorage.removeItem(key);
+      else window.localStorage.setItem(key, JSON.stringify(next));
+    } catch {}
+    listeners.forEach((listener) => listener());
+  };
+  return [value, save] as const;
+}

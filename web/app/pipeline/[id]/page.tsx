@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { TenderDecision } from "@/components/pipeline/TenderDecision";
 import { COMPANY_NIF, summarizeAwards, trackRecordFor, withTrackRecord } from "@/lib/award-history";
 import { requireCompany } from "@/lib/company-server";
+import { buyerRecord, competitionRisk } from "@/lib/competition-risk";
 import { buyerAwards, buyerStats, companyAwards, companyMatches, similarAwarded, tenderBundle } from "@/lib/data-cache";
 import { todayInSpain, type Decision } from "@/lib/discover";
 import {
@@ -77,7 +78,16 @@ export default async function PipelineTenderPage(props: PageProps<"/pipeline/[id
 
   return (
     <AppShell active="pipeline" companyName={company.name} userEmail={user.email}>
-      <TenderDecision data={data} openChat={ask === "1"} />
+      <TenderDecision
+        data={data}
+        openChat={ask === "1"}
+        risk={competitionRisk({
+          procedure: tender.procedure_label,
+          urgency: ((tender.extra as { urgency_code?: string } | null)?.urgency_code as string | undefined) ?? null,
+          buyer: buyer ? buyerRecord(buyer) : null,
+          companyNif: company.nif,
+        })}
+      />
     </AppShell>
   );
 }
