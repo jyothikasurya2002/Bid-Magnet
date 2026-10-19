@@ -168,10 +168,26 @@ GOTCHAS LEARNED
   set_config('request.jwt.claims','{"sub":"<uuid>","role":"authenticated"}',true).
   Locally: stub auth.uid() reading current_setting('test.uid').
 
+FRONTEND (web/, Next.js 16 + supabase-js + OpenAI; built by Miguel, on main)
+- Miguel's app is THE frontend. jyothika/frontend (palette, breakdown,
+  partners, search experiments) is not merged; don't build on it.
+- Setup: cd web; npm install --no-package-lock (lock file out of sync on
+  macOS); npx next typegen; npm run typecheck; npm test. web/.env.local
+  (git-ignored): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+  (publishable key), OPENAI_API_KEY (AI features only).
+- Bid prep (branch jyothika/bid-prep, PR into main pending): Jyothika's logic
+  lib/price-sim.ts (formulas, art. 85 RGLCAP abnormal-low, rivals, advise),
+  lib/draft-outline.ts, lib/breakdown.ts, lib/bid-prep-server.ts,
+  lib/proposal-draft.ts + POST /api/tenders/[id]/draft; Miguel's screens
+  components/bid/PriceSimulator.tsx, ProposalOutline.tsx, BidPlanView.tsx.
+- Vitest alias '@' breaks because the repo path ends with a space; tests use
+  relative imports.
+- Diagrams: architecture-simple.png (slides), architecture.png (detailed).
+
 NEXT (not done)
-- Frontend (Next.js, 7 screens: profile, feed, tender page, checklist, price
-  simulator, vault/drafting, results). Data-side status per screen is in
-  progress.txt section 7d.
+- Merge jyothika/bid-prep into main. Feedback 2026-10-06: buyer contact
+  (cac:Contact in the national feed: office name, phone, email; not parsed
+  yet) and an "action plan" per tender; email alerts.
 - PDFs -> Supabase Storage; pgvector semantic matching; more history (Jan 2026+);
   regional sources (Catalonia SODA API, Basque API, Navarra, EU TED); more
   checklists; daily job secret.

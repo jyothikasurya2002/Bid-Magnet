@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-label="BidMagnet architecture, simple: public tender data is collected every morning by a Python pipeline into an EU Supabase database, which powers the web app SME bid teams use; an AI assistant helps inside the app." font-family="'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#f2f1ea"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1200" height="520" fill="#1f4a3a"/>
+
+  <text x="40" y="58" font-size="26" font-weight="700" fill="#f2f1ea">How BidMagnet works</text>
+  <text x="40" y="86" font-size="15" fill="#b9c9be">From public tender data to a bid decision, refreshed every morning</text>
+
+  <!-- step numbers -->
+  <g font-size="13" font-weight="700" letter-spacing="2" fill="#b9c9be" text-anchor="middle">
+    <text x="140" y="140">1 · COLLECT</text>
+    <text x="390" y="140">2 · CLEAN</text>
+    <text x="640" y="140">3 · STORE &amp; SCORE</text>
+    <text x="890" y="140">4 · USE</text>
+  </g>
+
+  <!-- boxes -->
+  <g>
+    <rect x="40" y="156" width="200" height="140" rx="10" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="140" y="200" text-anchor="middle" font-size="18" font-weight="600" fill="#f2f1ea">Public tenders</text>
+    <text x="140" y="230" text-anchor="middle" font-size="13.5" fill="#c9d6cd">National + regional</text>
+    <text x="140" y="250" text-anchor="middle" font-size="13.5" fill="#c9d6cd">platforms (PLACSP)</text>
+    <text x="140" y="270" text-anchor="middle" font-size="13.5" fill="#c9d6cd">official open data</text>
+
+    <rect x="290" y="156" width="200" height="140" rx="10" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="390" y="200" text-anchor="middle" font-size="18" font-weight="600" fill="#f2f1ea">Daily pipeline</text>
+    <text x="390" y="230" text-anchor="middle" font-size="13.5" fill="#c9d6cd">Python · GitHub Actions</text>
+    <text x="390" y="250" text-anchor="middle" font-size="13.5" fill="#c9d6cd">keeps only IT tenders</text>
+    <text x="390" y="270" text-anchor="middle" font-size="13.5" fill="#c9d6cd">every morning, 07:30</text>
+
+    <rect x="540" y="156" width="200" height="140" rx="10" fill="#f2f1ea"/>
+    <text x="640" y="200" text-anchor="middle" font-size="18" font-weight="700" fill="#1f4a3a">Database</text>
+    <text x="640" y="230" text-anchor="middle" font-size="13.5" fill="#1f4a3a">Supabase · EU (Ireland)</text>
+    <text x="640" y="250" text-anchor="middle" font-size="13.5" fill="#1f4a3a">23,000+ IT tenders</text>
+    <text x="640" y="270" text-anchor="middle" font-size="13.5" fill="#1f4a3a">fit score · who wins</text>
+
+    <rect x="790" y="156" width="200" height="140" rx="10" fill="#27583f" stroke="#a9bfb2"/>
+    <text x="890" y="200" text-anchor="middle" font-size="18" font-weight="600" fill="#f2f1ea">Web app</text>
+    <text x="890" y="230" text-anchor="middle" font-size="13.5" fill="#c9d6cd">Next.js</text>
+    <text x="890" y="250" text-anchor="middle" font-size="13.5" fill="#c9d6cd">Discover → Decide</text>
+    <text x="890" y="270" text-anchor="middle" font-size="13.5" fill="#c9d6cd">→ Prepare the bid</text>
+
+    <rect x="1040" y="186" width="120" height="80" rx="40" fill="#f2f1ea"/>
+    <text x="1100" y="222" text-anchor="middle" font-size="15" font-weight="600" fill="#1f4a3a">SME</text>
+    <text x="1100" y="242" text-anchor="middle" font-size="15" font-weight="600" fill="#1f4a3a">bid team</text>
+  </g>
+
+  <!-- flow arrows -->
+  <g stroke="#f2f1ea" stroke-width="2" marker-end="url(#arr)">
+    <line x1="242" y1="226" x2="286" y2="226"/>
+    <line x1="492" y1="226" x2="536" y2="226"/>
+    <line x1="742" y1="226" x2="786" y2="226"/>
+    <line x1="992" y1="226" x2="1036" y2="226"/>
+  </g>
+
+  <!-- AI assistant -->
+  <rect x="790" y="350" width="200" height="74" rx="10" fill="none" stroke="#f2f1ea" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="890" y="380" text-anchor="middle" font-size="16" font-weight="600" fill="#f2f1ea">AI assistant</text>
+  <text x="890" y="403" text-anchor="middle" font-size="13" fill="#c9d6cd">summaries · chat · drafts</text>
+  <line x1="890" y1="348" x2="890" y2="300" stroke="#f2f1ea" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+
+  <!-- trust strip -->
+  <g font-size="14" fill="#f2f1ea">
+    <text x="40" y="478" font-weight="700" letter-spacing="2" fill="#b9c9be" font-size="13">BUILT IN</text>
+    <circle cx="140" cy="473" r="4" fill="#f2f1ea"/>
+    <text x="152" y="478">EU hosting</text>
+    <circle cx="268" cy="473" r="4" fill="#f2f1ea"/>
+    <text x="280" y="478">Each company sees only its own data</text>
+    <circle cx="545" cy="473" r="4" fill="#f2f1ea"/>
+    <text x="557" y="478">AI answers cite the source page</text>
+  </g>
+</svg>

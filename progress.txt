@@ -1,6 +1,6 @@
 BIDMAGNET – PROGRESS
 ====================
-Data & backend owner: Jyothika        Last updated: 2026-10-02
+Data & backend owner: Jyothika        Last updated: 2026-10-19
 (For the team building the app: BACKEND_STACK.txt)
 (Technical details for developers/AI: implementation.txt)
 
@@ -70,7 +70,9 @@ The company still submits on the official government platform itself.
   Document checklists with page refs     3 demo tenders done
   Full bid results (ALL bidders' prices  9 tenders done (115 bids), all
   and scores, incl. losers)              page-verified
-  Website / app screens                  Not started (frontend team)
+  Website / app screens                  Built by Miguel (web/), on main
+  Bid prep: price simulator +            Logic by Jyothika, screens by Miguel
+  proposal drafting                      (branch jyothika/bid-prep, to merge)
 
 
 4. KEY NUMBERS (January–September 2026)
@@ -247,6 +249,17 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
+  2026-10-19  Frontend = Miguel's app only (web/ on main). Jyothika's own
+              frontend experiments (branch jyothika/frontend) are not merged.
+              Architecture diagrams added: architecture-simple.png (for the
+              team/slides) and architecture.png (detailed).
+  2026-10-05  Bid prep engine (for Miguel's screens): price simulator ("if we
+              bid X% below budget, how many points, and would we be flagged
+              as abnormally low?") using the tender's own formula and the
+              legal art. 85 rule, with rivals based on past winning discounts;
+              proposal outline per scored criterion (free) and an AI first
+              draft that never invents company facts. Handover:
+              BID_PREP_HANDOVER.md (branch jyothika/bid-prep).
   2026-10-03  Power BI export (data-pipeline/powerbi_export.py ->
               out/powerbi/tenders.csv + results.csv) and POWERBI_GUIDE.md
               for Jyothika's college assessment.
