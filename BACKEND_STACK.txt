@@ -1,11 +1,11 @@
 BIDMAGNET – BACKEND STACK (read this before building or exploring)
 =================================================================
-Last updated: 2026-10-02
+Last updated: 2026-10-19
 Please don't change the backend directly (see section 5): it runs live
 every day and every screen depends on it.
 
 Related files: data-pipeline/API.md (copy-paste code for every screen),
-progress.txt (what's done, in plain words), implementation.txt (deep
+APP_GUIDE.md (the web app, page by page), progress.txt (what's done, in plain words), implementation.txt (deep
 technical notes).
 
 
@@ -19,10 +19,12 @@ technical notes).
    download -> clean -> keep IT ->         tables + ready-made functions
    load -> AI fingerprints                       |
                                                  v
-                                     Next.js frontend (Vercel)  <-- YOU
+                                     Next.js web app (web/)
                                      talks to Supabase directly with
-                                     supabase-js. There is NO separate
-                                     API server to build or call.
+                                     supabase-js. Its own server routes
+                                     (web/app/api/) only call OpenAI for
+                                     the AI features.
+   Diagrams: architecture-simple.png and architecture.png (repo root).
 
    Pieces: Supabase (database, login, security rules), Python 3.12,
    GitHub Actions (daily job), pgvector + a free multilingual AI model
@@ -31,9 +33,10 @@ technical notes).
 
 2. WHAT'S IN THE DATABASE (live today)
 --------------------------------------
-   - 23,000+ IT tenders, Jan–Sep 2026, Spain-wide (national platform plus
-     Catalonia, Basque Country, Navarre, Madrid, Andalucía, Galicia...).
-     ~690 are open for bids right now. New ones arrive every morning.
+   - 23,000+ IT tenders from January 2026 to today, Spain-wide (national
+     platform plus Catalonia, Basque Country, Navarre, Madrid, Andalucía,
+     Galicia...). About 500 are open for bids at any time. New ones arrive
+     every morning.
    - For each tender: buyer, budget, deadline, region, sector codes,
      scoring criteria, requirements, links to every official PDF, and
      (when awarded) the winner, number of bids, lowest/highest bid.
@@ -52,7 +55,10 @@ technical notes).
 ----------------------------
    In the Next.js app, .env.local (the two values are shared privately):
      NEXT_PUBLIC_SUPABASE_URL=...        (Supabase -> Project Settings -> API)
-     NEXT_PUBLIC_SUPABASE_ANON_KEY=...   (same page; safe to use in the browser)
+     NEXT_PUBLIC_SUPABASE_ANON_KEY=...   (same page; the "publishable" key,
+                                          safe to use in the browser)
+     OPENAI_API_KEY=...                  (optional, server only: AI summary,
+                                          chat, document reading, drafts)
 
    import { createClient } from '@supabase/supabase-js'
    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -86,8 +92,10 @@ technical notes).
                                      view bidder_history (full bid results)
      Go / No-go / Watch       table  tender_decisions   (upsert)
    4 Bid checklist            table  tender_extractions (JSON with page refs)
-   5 Price simulator          no backend call: use the checklist's price
-                              formula + buyer_stats.median_discount
+   5 Bid prep: price          web/lib/price-sim.ts (no extra backend):
+     simulator                checklist price formula + buyer_stats +
+                              similar_tenders discounts
+     Proposal outline/draft   web/lib/draft-outline.ts, /api/tenders/[id]/draft
    Renewal radar              view   upcoming_renewals  (contracts ending soon)
 
    Tips:
@@ -170,4 +178,4 @@ technical notes).
      not stored in Supabase.
    - Certificate requirements in the fit score are only detected when the
      tender data or a checklist mentions them.
-   - Free tier: 500 MB database, ~175 MB used.
+   - Free tier: 500 MB database, ~180 MB used.

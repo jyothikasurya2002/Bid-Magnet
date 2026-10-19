@@ -1,16 +1,17 @@
 BIDMAGNET – IMPLEMENTATION NOTES FOR AI ASSISTANTS
-Read this first. Human-friendly history is in progress.txt. Updated 2026-10-02.
+Read this first. Human-friendly history is in progress.txt. Updated 2026-10-19.
 
 PROJECT
 - BidMagnet: bid/no-bid + bid-prep SaaS for Spanish IT SMEs (20-500 staff)
   bidding on public tenders. IE Tech Venture Bootcamp team project (TVB28).
-- Jyothika owns data + backend. Others: Miguel (mockups), Lola/Gabriel
-  (competitors), Nabila/Simmran (pricing). Frontend: Next.js on Vercel (not built).
-- Root: "/Users/jyothikasurya/Documents/Tender Venture " (TRAILING SPACE in path).
-  Code: data-pipeline/. Git branch main, local commits only.
+- Team roles: data + backend; web app (web/); competitors research; pricing.
+  Frontend: Next.js app in web/ (runs locally; not deployed yet).
+- Repo root folder is "Tender Venture " (TRAILING SPACE in the path).
+  Code: data-pipeline/ (backend) and web/ (app). Work on a branch, merge to
+  main via pull request; local commits only.
 
 RULES FROM THE USER
-- Never push or set up GitHub; just commit. Jyothika pushes manually.
+- Never push or set up GitHub; just commit. The repo owner pushes manually.
 - No paid Claude API. Checklists are written by Claude Code in-session, then
   checked with `extract_tender.py <id> --verify`.
 - After every piece of work, update progress.txt (status + change log) and,
@@ -132,14 +133,16 @@ PIPELINE (data-pipeline/)
                     competitor_stats.is_sme = majority of awards flagged SME.
 - API.md            how the Next.js app calls everything (supabase-js).
 - .github/workflows/daily-ingest.yml (repo root): live 3 pages -> build -> load;
-                    secret DATABASE_URL is SET and the job works (first run
-                    2026-10-02 18:19 UTC). Also runs regional live + embed.py.
+                    secret DATABASE_URL is SET; runs daily and succeeds (checked
+                    2026-10-19). Also runs regional live + embed.py.
 - Rebuild everything:
     python3 build_dataset.py raw/placsp_2026{01,02,03,04,05,06,07,08,09}.zip raw/live --segments all   (~12 min)
     uv run -q --python 3.13 --with "psycopg[binary]" load_supabase.py [--force]   (~1-2 min)
 
-CURRENT DATA (in Supabase, 171 MB of 500 MB; embeddings 23 MB)
-- Jan-Sep 2026, national + regional: 247,038 tenders, 23,059 IT, 673 open. 3 checklists
+CURRENT DATA (in Supabase, 180 MB of 500 MB; 2026-10-19)
+- 23,470 IT tenders (Jan 2026 to today, national + regional), 494 open,
+  27,778 award rows, competitor_stats 5,275, all tenders embedded.
+- Jan-Sep 2026 study: 247,038 tenders, 23,059 IT. 3 checklists
   (20602902 cemetery SaaS, 20571626 AI chatbot, 20586307 OT cyber, 3 lots),
   116/116 citations verified. buyer_stats 2,088 buyers (846 with a discount);
   competitor_stats 5,218 winners. Demo company id
@@ -168,26 +171,38 @@ GOTCHAS LEARNED
   set_config('request.jwt.claims','{"sub":"<uuid>","role":"authenticated"}',true).
   Locally: stub auth.uid() reading current_setting('test.uid').
 
-FRONTEND (web/, Next.js 16 + supabase-js + OpenAI; built by Miguel, on main)
-- Miguel's app is THE frontend. jyothika/frontend (palette, breakdown,
-  partners, search experiments) is not merged; don't build on it.
+FRONTEND (web/, Next.js 16 + React 19 + supabase-js + OpenAI)
+- Pages: /login (magic link), /welcome + /company (profile ledger, documents,
+  website research, award history import), /discover (feed by fit score, tabs
+  Open/Interested/Renewals/Prior notices/Dismissed, swipe FocusMode, RiskNote
+  "meant for someone" check from lib/competition-risk.ts), /pipeline,
+  /pipeline/[id] ("Should we bid?": Fit score, Buyer, Who wins, Your track
+  record + AI chat), /bid (tenders you bid on + to-dos), /bid/[id] (Bid plan
+  tabs: Plan, Price, Proposal). Outcomes = placeholder.
+- API routes (server, OpenAI): tenders/[id]/summary, tenders/[id]/chat,
+  tenders/[id]/draft, company/research, company/extract-document,
+  company/award-history.
+- Bid prep logic: lib/price-sim.ts (formulas lowest_ratio / discount_ratio /
+  linear / logarithmic + cap; art. 85 RGLCAP abnormal-low in discount points;
+  marketFrom rivals; simulate; advise), lib/draft-outline.ts (outline per
+  scored criterion, [ADD:] gaps), lib/breakdown.ts (must-meet / formula /
+  judgement), lib/bid-prep-server.ts (breakdownOf, priceOf, loadBidPrep),
+  lib/proposal-draft.ts (zod schema; never invent company facts). UI:
+  components/bid/BidPlanView.tsx, PriceSimulator.tsx, ProposalOutline.tsx.
 - Setup: cd web; npm install --no-package-lock (lock file out of sync on
-  macOS); npx next typegen; npm run typecheck; npm test. web/.env.local
-  (git-ignored): NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
-  (publishable key), OPENAI_API_KEY (AI features only).
-- Bid prep (branch jyothika/bid-prep, PR into main pending): Jyothika's logic
-  lib/price-sim.ts (formulas, art. 85 RGLCAP abnormal-low, rivals, advise),
-  lib/draft-outline.ts, lib/breakdown.ts, lib/bid-prep-server.ts,
-  lib/proposal-draft.ts + POST /api/tenders/[id]/draft; Miguel's screens
-  components/bid/PriceSimulator.tsx, ProposalOutline.tsx, BidPlanView.tsx.
+  macOS); npx next typegen; npm run typecheck; npm test (95 tests); npm run
+  build; npm run dev -> http://localhost:3000. web/.env.local (git-ignored):
+  NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY (publishable key),
+  OPENAI_API_KEY (AI features only; rest works without it).
 - Vitest alias '@' breaks because the repo path ends with a space; tests use
   relative imports.
+- Don't change the app's styles/colours (web/app/globals.css) unless the app
+  owner asks. App guide for humans: APP_GUIDE.md.
 - Diagrams: architecture-simple.png (slides), architecture.png (detailed).
 
 NEXT (not done)
-- Merge jyothika/bid-prep into main. Feedback 2026-10-06: buyer contact
-  (cac:Contact in the national feed: office name, phone, email; not parsed
-  yet) and an "action plan" per tender; email alerts.
-- PDFs -> Supabase Storage; pgvector semantic matching; more history (Jan 2026+);
-  regional sources (Catalonia SODA API, Basque API, Navarra, EU TED); more
-  checklists; daily job secret.
+- Feedback 2026-10-06: buyer contact (cac:Contact in the national feed:
+  office name, phone, email; not parsed yet), an "action plan" per tender,
+  email alerts. Outcomes page (tender_bids / bidder_history unused by the UI).
+- PDFs -> Supabase Storage; more checklists and bid results; EU TED; deploy
+  the app (Vercel).

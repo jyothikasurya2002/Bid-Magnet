@@ -182,7 +182,7 @@ const { data: buyer } = await supabase.from('buyer_stats').select('*').eq('buyer
 | `last_award_date` | Most recent award |
 | `top_winners` | `[{name, nif, wins}]`, up to 5 |
 
-**Data window: January–September 2026.** National platform plus regional platforms (Catalonia, Basque Country, Madrid, Andalucía, Galicia, Navarra…). `tenders.source` is `placsp` or `regional`. Regional tenders have fewer document links.
+**Data window: January 2026 to today** (new tenders added every morning). National platform plus regional platforms (Catalonia, Basque Country, Madrid, Andalucía, Galicia, Navarra…). `tenders.source` is `placsp` or `regional`. Regional tenders have fewer document links.
 
 **Decisions** (Go / No-go / Watch), one per company and tender:
 ```ts
@@ -219,7 +219,7 @@ Structure (full schema in `extract_tender.py` → `SCHEMA`):
 Checklists exist today for: `20602902` (cemetery SaaS), `20571626` (AI chatbot), `20586307` (OT cybersecurity).
 
 ## Screen 5: Price simulator
-There's no backend call. Use `checklist.price.formula` plus the buyer's `median_discount`.
+There's no extra backend call. The app's simulator (`web/lib/price-sim.ts`) reads `checklist.price.formula` and `abnormally_low_rule` when a checklist exists, and takes past winning discounts from this buyer's awards plus `similar_tenders`. It applies the legal abnormally-low rule (art. 85 RGLCAP) by default.
 
 As a market reference, the median discount in competitive procedures is about 10% (open) and 14% (simplified), June–Sept 2026.
 
@@ -256,7 +256,7 @@ const { data } = await supabase.rpc('search_tenders', { q: 'mantenimiento web ay
 - Set `only_open: false` to include past tenders.
 
 ## Competitor profiles (`competitor_stats`)
-One row per company that won an IT award (January–September 2026).
+One row per company that won an IT award (January 2026 to today).
 
 ```ts
 // a competitor
