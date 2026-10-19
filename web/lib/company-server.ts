@@ -25,7 +25,7 @@ export const requireCompany = cache(async () => {
   return { supabase, user, company: companyFromRow(companyRow) };
 });
 
-// "migo.chapero@gmail.com" -> "Migo Chapero": how you appear on tasks you take.
+// "ana.garcia@example.com" -> "Ana Garcia": how you appear on tasks you take.
 export function displayName(email: string | undefined) {
   const local = (email || "").split("@")[0];
   const name = local

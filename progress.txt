@@ -1,7 +1,8 @@
 BIDMAGNET – PROGRESS
 ====================
-Data & backend owner: Jyothika        Last updated: 2026-10-19
-(For the team building the app: BACKEND_STACK.txt)
+BidMagnet team                        Last updated: 2026-10-19
+(How to use the web app: APP_GUIDE.md)
+(For anyone working on the app: BACKEND_STACK.txt)
 (Technical details for developers/AI: implementation.txt)
 
 
@@ -46,9 +47,9 @@ The company still submits on the official government platform itself.
 -----------------------
   Part                                   Status
   Daily tender collection                LIVE: GitHub runs it every morning
-                                         at 07:30 Spain time (05:30 UTC)
+                                         (05:30 UTC); succeeding every day
   Database (Supabase, EU servers)        Built and filled
-  9 months of tenders (Jan–Sep 2026)     Loaded: national platform + regional
+  Tenders from January 2026 to today     Loaded: national platform + regional
                                          platforms (Catalonia, Basque Country,
                                          Navarre, Madrid, Andalucía, Galicia...)
   Fit score for a company                Built
@@ -56,7 +57,7 @@ The company still submits on the official government platform itself.
   Competitor profiles (who wins what)    Built
   Renewal radar (contracts ending soon)  Built
   Search box (Spanish-aware)             Built
-  Company profile details + private      Built (frontend team's request): ROLECE
+  Company profile details + private      Built (requested by the app team): ROLECE
   document vault (certificates)          and classification status, uploads,
                                          expiry alerts; reviewed ENS/ISO
                                          certificates count in the fit score
@@ -70,16 +71,21 @@ The company still submits on the official government platform itself.
   Document checklists with page refs     3 demo tenders done
   Full bid results (ALL bidders' prices  9 tenders done (115 bids), all
   and scores, incl. losers)              page-verified
-  Website / app screens                  Built by Miguel (web/), on main
-  Bid prep: price simulator +            Logic by Jyothika, screens by Miguel
-  proposal drafting                      (branch jyothika/bid-prep, to merge)
+  Web app (web/)                         Built: login, company profile,
+                                         Discover (feed + swipe), Pipeline,
+                                         "Should we bid?" page, AI assistant
+  Bid prep (plan, price simulator,       Built: task plan per tender, price
+  proposal outline + AI draft)           simulator, proposal outline + draft
+  "Is this tender meant for someone?"    Built: warning based on 26,000+ past
+  check                                  awards (single bids, repeat winners)
+  Outcomes (win/loss tracking)           Not built yet
 
 
 4. KEY NUMBERS (January–September 2026)
 ---------------------------------------
   - 247,038 public tenders published (national + regional platforms);
-    23,059 are IT (3,524 in Catalonia, 1,441 in the Basque Country);
-    673 open right now.
+    23,059 are IT (3,524 in Catalonia, 1,441 in the Basque Country).
+  - Today (19 Oct 2026): 23,470 IT tenders in the database, 494 open.
   - 3,882 different companies won IT contracts; the biggest are
     Telefónica, Inetum, Indra, Orange and Vodafone.
   - 4,588 IT contracts are expected to end in the next 12 months
@@ -119,26 +125,26 @@ The company still submits on the official government platform itself.
 
 6. NEXT STEPS
 -------------
-  Jyothika:
-    [x] Push to GitHub (done up to 2026-10-02; push again after new commits)
-    [x] DATABASE_URL secret added in GitHub; daily job tested OK
-        (first run added 21 new IT tenders, all embedded)
-    [ ] Send the frontend team: data-pipeline/API.md + Supabase Project URL
-        and anon key (never the database password or .env)
-  Data/backend (Claude):
-    [x] Matching by meaning (AI embeddings)
-    [x] Regional platforms (via PLACSP's regional feed)
-    [~] Bid results: 9 tenders done; 1,100+ more have award reports
+  Done:
+    [x] Daily job live on GitHub (runs every morning, emails on failure)
+    [x] Matching by meaning, regional platforms, partner finder
+    [x] Web app with Discover, Pipeline, "Should we bid?", Bid prep, Company
+  To do (from the final presentation feedback):
+    [ ] Show each buyer's official contact (office name, phone, email):
+        it is already in the daily feed, not saved yet
+    [ ] "Action plan" per tender: next steps, dates, who to contact
+    [ ] Email alerts: new matching tenders, changes, close deadlines
+    [ ] Outcomes page (win/loss tracking); bid results exist for 9 tenders
+  Later:
+    [ ] More cited checklists and bid results (1,100+ award reports exist)
     [ ] Put the PDFs of open tenders into Supabase Storage
-    [ ] EU TED (large EU-wide tenders)
-  Team:
-    [ ] Mockups/screens using the real demo data (see API.md)
+    [ ] EU TED (large EU-wide tenders); deploy the app online (Vercel)
 
 
 7. STORAGE NOTE (Supabase free tier = 500 MB)
 ---------------------------------------------
-  Now: 171 MB (about a third of the limit) for 23,059 IT tenders
-  (9 months, national + regional), including:
+  Now: 180 MB (about a third of the limit) for 23,470 IT tenders
+  (January 2026 to today, national + regional), including:
     tender documents (links)   59 MB
     tenders                    44 MB
     AI fingerprints            23 MB  (for matching by meaning)
@@ -154,14 +160,17 @@ The company still submits on the official government platform itself.
 8. FOR THE TEAM: HOW THE BACKEND WORKS (technical)
 --------------------------------------------------
   Everything is in the repo under data-pipeline/. Full how-to: its README.md;
-  frontend guide: API.md; AI/dev notes: implementation.txt.
+  database guide for the app: API.md; app guide: APP_GUIDE.md; AI/dev notes: implementation.txt.
 
   8a. Architecture
     PLACSP (government XML feed)
         |  Python scripts (laptop now; GitHub Actions daily at 05:30 UTC)
         v
-    Supabase Postgres (EU, Ireland)  <-- Next.js app reads it with supabase-js
-                                        (no separate server; signed-in users only)
+    Supabase Postgres (EU, Ireland)  <-- Next.js web app (web/) reads it with
+                                        supabase-js; signed-in users only
+                                        AI features (summaries, chat, drafts)
+                                        run in the app's server routes (OpenAI)
+    Diagrams: architecture-simple.png (slides), architecture.png (detailed)
 
   8b. Python scripts (data-pipeline/)
     placsp_fetch.py    downloads monthly zips / live feed pages / tender PDFs.
@@ -224,16 +233,18 @@ The company still submits on the official government platform itself.
     uv run --with "psycopg[binary]" load_supabase.py   # --force after code changes
     New database? Run schema.sql then backend.sql in the Supabase SQL editor.
 
-  8f. What Jyothika built (data & backend), Oct 2026
-    - The full collection pipeline above, tested on 9 months of real data
-      (178,645 tenders -> 16,134 IT).
+  8f. Data & backend summary (Oct 2026)
+    - The full collection pipeline above, run daily since 2 October 2026.
     - The Supabase database, security rules and all backend features.
     - 3 demo checklists with 116 verified page references.
-    - Storage optimisation (154 MB -> 128 MB while doubling the data).
+    - Storage optimisation (each tender ~7 KB instead of ~18 KB).
     - API.md so the frontend can build every screen.
     - Full bid results from award reports (all bidders, prices, scores,
       exclusion reasons): the data no public source provides in structured
-      form; 2 tenders / 39 bids so far, all page-verified.
+      form; 9 tenders / 115 bids so far, all page-verified.
+    - The logic behind Bid prep: price simulator (tender formulas, legal
+      abnormally-low rule, rivals from past discounts) and the proposal
+      outline / AI draft.
 
   8g. Known limits
     - Regional tenders carry less detail than national ones (fewer
@@ -249,24 +260,26 @@ The company still submits on the official government platform itself.
 
 9. LOG
 ------
-  2026-10-19  Frontend = Miguel's app only (web/ on main). Jyothika's own
-              frontend experiments (branch jyothika/frontend) are not merged.
-              Architecture diagrams added: architecture-simple.png (for the
-              team/slides) and architecture.png (detailed).
-  2026-10-05  Bid prep engine (for Miguel's screens): price simulator ("if we
-              bid X% below budget, how many points, and would we be flagged
-              as abnormally low?") using the tender's own formula and the
-              legal art. 85 rule, with rivals based on past winning discounts;
-              proposal outline per scored criterion (free) and an AI first
-              draft that never invents company facts. Handover:
-              BID_PREP_HANDOVER.md (branch jyothika/bid-prep).
+  2026-10-19  Docs refreshed (no personal names; APP_GUIDE.md added).
+              Checked: app builds, 95 tests pass, daily job succeeding,
+              database current (23,470 IT tenders, 494 open).
+  2026-10-10  Bid prep screens: task plan per tender, price simulator,
+              proposal outline + AI draft; "is this tender meant for someone"
+              warning on Discover.
+  2026-10-06  Final presentation. Feedback: show decision-makers / buyer
+              contacts; help users act on an opportunity (see section 6).
+  2026-10-05  Bid prep logic: price simulator ("if we bid X% below budget,
+              how many points, and would we be flagged as abnormally low?")
+              using the tender's own formula and the legal art. 85 rule, with
+              rivals based on past winning discounts; proposal outline per
+              scored criterion (free) and an AI first draft that never
+              invents company facts. Architecture diagrams for the slides.
   2026-10-03  Power BI export (data-pipeline/powerbi_export.py ->
-              out/powerbi/tenders.csv + results.csv) and POWERBI_GUIDE.md
-              for Jyothika's college assessment.
+              out/powerbi/tenders.csv + results.csv) and POWERBI_GUIDE.md.
   2026-10-02  After mentor feedback: partner finder, solvency-friendly flag,
               MENTOR_WALKTHROUGH.md (real tender split into must-meet /
               formula / judgement criteria, gaps, documents, competition).
-  2026-10-02  Frontend team's request added: company fields (NIF, website,
+  2026-10-02  App team's request added: company fields (NIF, website,
               ROLECE/classification status + codes, updated_at), private
               document bucket + company_documents table (owner-only),
               certificate/expiry views; fit score now uses ROLECE status,

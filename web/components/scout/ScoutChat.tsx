@@ -253,6 +253,7 @@ export function ScoutChat({ companyId, tenderId, documents, open, onClose, sugge
             className="chat-picker-button"
             aria-expanded={picker !== null}
             aria-haspopup="menu"
+            title={thread?.topic ? `Scout also knows: ${thread.topic.context}` : "Your chats about this tender"}
             onClick={() => setPicker(picker === null ? Date.now() : null)}
           >
             <span>{thread ? threadTitle(thread) : "General chat"}</span>
@@ -369,12 +370,8 @@ export function ScoutChat({ companyId, tenderId, documents, open, onClose, sugge
         }}
       >
         <div className="chat-context" aria-label="What Scout sees">
+          {/* The topic is already the chat's title above (its context is in that title's tooltip). */}
           <span className="chat-context-label">Scout sees</span>
-          {thread?.topic ? (
-            <span className="chat-chip chat-chip-topic" title={thread.topic.context}>
-              {thread.topic.title}
-            </span>
-          ) : null}
           <span
             className="chat-chip"
             title={read ? (read.length ? "Scout read these PDFs for this chat" : "The PDFs couldn’t be opened") : "Read when you ask the first question"}

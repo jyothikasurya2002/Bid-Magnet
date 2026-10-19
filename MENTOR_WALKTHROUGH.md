@@ -87,4 +87,4 @@ Across 9 tenders and 115 bids that we read in full:
 | Eligibility / solvency | Young firms can't prove experience | Flags gaps, and flags **small simplified tenders where solvency proof is usually waived** (99 open ones for this company), a way to build a track record |
 | Partners | 15–30 days to find one | **Partner finder:** companies that won similar tenders nearby, with wins big enough to prove experience. For this tender it suggests e.g. Adelante Servicios Informáticos, who won El Campello's cemetery-software implementation |
 | Understanding documents | Must-meet vs. scored vs. judgement | Cited checklist split exactly this way, with contradictions flagged |
-| Proposal / cost of losing | Expensive, uncertain | Shows the criteria you'll compete on, the typical winning discount and why others lost |
+| Proposal / cost of losing | Expensive, uncertain | Shows the criteria you'll compete on, the typical winning discount and why others lost. **Bid prep** adds a task plan, a price simulator (points under the tender's formula and the abnormally-low limit) and a proposal outline with an optional AI first draft |

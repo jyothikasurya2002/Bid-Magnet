@@ -77,6 +77,20 @@ describe("discover helpers", () => {
     expect(detailedCount({ ...DEFAULT_FILTERS, work: ["core"], scoring: "price" })).toBe(2);
   });
 
+  it("hides tenders that look pre-arranged, and keeps them out of the few-bidders filter", () => {
+    const risk = { level: "high" as const, score: 60, label: "Looks pre-arranged", signals: [] };
+    const fewBidders = [{ type: "ok" as const, points: 5, text: "Low competition at this buyer" }];
+    const base: Omit<FeedTender, "tender_id" | "risk"> = {
+      title: "t", score: 50, deadline_date: null, reasons: fewBidders, has_checklist: false, link: null, source: "placsp", duration: null,
+      duration_unit: null, kind: "open", buyer_name: null, region: null, budget_no_tax: null, deadline_time: null, procedure_label: null,
+    };
+    const tenders: FeedTender[] = [{ ...base, tender_id: "open" }, { ...base, tender_id: "wired", risk }];
+    const run = (patch: Partial<Filters>) => applyFilters(tenders, { ...DEFAULT_FILTERS, ...patch }).map((t) => t.tender_id);
+    expect(run({})).toEqual(["open", "wired"]);
+    expect(run({ hidePrearranged: true })).toEqual(["open"]);
+    expect(run({ lowCompetition: true })).toEqual(["open"]);
+  });
+
   it("sorts by deadline or budget", () => {
     const base = { reasons: [], has_checklist: false, link: null, source: "placsp", duration: null, duration_unit: null, kind: "open" as const, buyer_name: null, region: null, deadline_time: null, procedure_label: null, title: "", score: 1 };
     const list: FeedTender[] = [

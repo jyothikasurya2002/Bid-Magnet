@@ -3,7 +3,7 @@
   --surface: #faf9f7;
   --card: #ffffff;
   --text: #24211e;
-  --text-secondary: #625d56;
+  --text-secondary: #57514b; /* same as --text-body: one grey fewer */
   --accent: #064937;
   --accent-strong: #04382a;
   /* Light green: sparingly, only as a highlight on dark green. */
@@ -206,8 +206,12 @@ a.nav-link:hover {
   color: var(--text-secondary);
   background: transparent;
   font-size: 12px;
-  text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.text-button:hover {
+  color: var(--text);
+  text-decoration: underline;
 }
 
 .text-button:hover {
@@ -232,10 +236,9 @@ a.nav-link:hover {
 .eyebrow {
   margin: 0;
   color: var(--accent-strong);
-  font-family: var(--font-plex-mono), monospace;
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -1755,7 +1758,6 @@ button.doc-chip:hover {
 .welcome-eyebrow {
   margin: 0 0 14px;
   color: var(--text-muted);
-  font-family: var(--font-plex-mono), monospace;
   font-size: 12px;
   letter-spacing: 0.04em;
 }
@@ -2160,13 +2162,11 @@ button.doc-chip:hover {
   background: var(--dark);
   font-size: 13px;
   font-weight: 500;
-  box-shadow: 0 4px 14px rgb(36 33 30 / 18%);
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
 .swipe-launch:hover {
-  box-shadow: 0 6px 18px rgb(36 33 30 / 24%);
-  transform: translateY(-1px);
+  background: var(--dark-hover);
 }
 
 .swipe-launch-icon {
@@ -2341,7 +2341,7 @@ button.feed-row-selected:hover {
   flex-shrink: 0;
   padding: 2px 6px;
   border-radius: 3px;
-  color: #4a4540;
+  color: var(--text-body);
   background: var(--chip);
   font-size: 11px;
   font-weight: 500;
@@ -2436,9 +2436,8 @@ button.feed-row-selected:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px 16px;
-  padding: 16px 0;
+  padding: 16px 0 0;
   border-top: 1px solid var(--divider-subtle);
-  border-bottom: 1px solid var(--divider-subtle);
 }
 
 .pane-fact {
@@ -2468,9 +2467,8 @@ button.feed-row-selected:hover {
   flex-direction: column;
   gap: 8px;
   padding: 14px;
-  border: 1px solid #e3ded7;
   border-radius: 10px;
-  background: linear-gradient(180deg, #fbfaf8, #f6f3ef);
+  background: var(--surface);
 }
 
 .ai-summary-head {
@@ -4066,8 +4064,7 @@ button.feed-row-selected:hover {
   flex-direction: column;
   gap: 5px;
   margin: 0;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--divider-subtle);
+  padding: 4px 0 0;
   font-size: 13px;
   line-height: 1.4;
   list-style: none;
@@ -4085,8 +4082,7 @@ button.feed-row-selected:hover {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--divider-subtle);
+  padding-top: 4px;
   animation: welcome-in 200ms ease;
 }
 
@@ -4656,10 +4652,26 @@ button.feed-row-selected:hover {
 
 .dec-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   flex-shrink: 0;
   gap: 8px;
-  align-items: stretch;
+  align-items: center;
+}
+
+.dec-head .dec-ask {
+  padding: 8px 14px;
+  border: 1px solid var(--control);
+  color: var(--text);
+  background: var(--card);
+}
+
+.dec-head .dec-ask:hover {
+  border-color: var(--dark);
+  background: var(--card);
+}
+
+.dec-head .dec-ask span {
+  color: var(--dark);
 }
 
 .dec-ask {
@@ -4815,8 +4827,7 @@ button.feed-row-selected:hover {
   flex-direction: column;
   gap: 12px;
   margin: 0;
-  padding: 16px 0 0;
-  border-top: 1px solid var(--divider-subtle);
+  padding: 4px 0 0;
   list-style: none;
 }
 
@@ -4897,8 +4908,7 @@ button.feed-row-selected:hover {
 
 .dec-previous {
   margin: 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--divider-subtle);
+  padding-top: 4px;
   color: var(--text-body);
   font-size: 13px;
   line-height: 1.5;
@@ -5044,8 +5054,7 @@ button.feed-row-selected:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-top: 12px;
-  border-top: 1px solid var(--divider-subtle);
+  padding-top: 4px;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -5767,7 +5776,12 @@ a.chat-cite:hover {
   gap: 6px;
   align-items: center;
   padding: 0 12px;
+  border-color: var(--divider); /* quiet until switched on */
   white-space: nowrap;
+}
+
+.fbar .filter-chip-on {
+  border-color: var(--dark);
 }
 
 .fbar .fbar-seg button {
@@ -5780,7 +5794,7 @@ a.chat-cite:hover {
 .fbar .fbar-select,
 .fbar .fbar-sort select {
   padding: 0 30px 0 12px;
-  border: 1px solid var(--control);
+  border: 1px solid var(--divider);
   background: var(--card)
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%2377706a' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
     no-repeat right 11px center;
@@ -6344,7 +6358,7 @@ a.chat-cite:hover {
   align-items: center;
   height: var(--fbar-h, 34px);
   padding: 0 12px;
-  border: 1px solid var(--control);
+  border: 1px solid var(--divider);
   border-radius: 6px;
   color: var(--text-secondary);
   background: var(--card);
@@ -6510,7 +6524,6 @@ a.chat-cite:hover {
   gap: 4px;
   padding: 12px 14px;
   border: 1px solid var(--divider);
-  border-left: 3px solid var(--dark);
   border-radius: 8px;
   background: var(--card);
   font-size: 13px;
@@ -6629,7 +6642,7 @@ a.chat-cite:hover {
   padding: 0 16px;
   color: var(--text-muted);
   font-size: 11px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -7131,6 +7144,19 @@ a.chat-cite:hover {
   white-space: nowrap;
 }
 
+/* The whole row is the link: the arrow shows on hover (always on touch screens). */
+@media (hover: hover) {
+  .bids-open {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .bids-row:hover .bids-open,
+  .bids-row:focus-visible .bids-open {
+    opacity: 1;
+  }
+}
+
 .bids-empty {
   display: flex;
   flex-direction: column;
@@ -7413,7 +7439,7 @@ a.chat-cite:hover {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -7561,17 +7587,13 @@ a.chat-cite:hover {
 .chat-chip {
   max-width: 220px;
   overflow: hidden;
-  padding: 2px 7px;
-  border-radius: 999px;
-  color: var(--text-secondary);
-  background: var(--chip);
+  color: var(--text-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.chat-chip-topic {
-  color: #fff;
-  background: var(--dark);
+.chat-chip + .chat-chip::before {
+  content: "· ";
 }
 
 .chat-empty strong {
@@ -7738,10 +7760,7 @@ a.chat-cite:hover {
 .bid-fact {
   flex: 1 1 160px;
   max-width: 100%;
-  padding: 9px 12px;
-  border: 1px solid var(--divider);
-  border-radius: 8px;
-  background: var(--card);
+  padding: 2px 0;
 }
 
 .bid-fact-wide {
@@ -7770,6 +7789,8 @@ a.chat-cite:hover {
 }
 
 .bid-fact-warn {
+  padding: 6px 10px;
+  border-radius: 6px;
   background: var(--warning-surface);
 }
 
@@ -7881,10 +7902,8 @@ a.chat-cite:hover {
 
 .bid-detail-side {
   align-self: start;
-  padding: 12px;
-  border: 1px solid var(--divider);
-  border-radius: 8px;
-  background: var(--card);
+  padding: 2px 0 2px 20px;
+  border-left: 1px solid var(--divider);
 }
 
 .bid-seg button {
@@ -7901,6 +7920,9 @@ a.chat-cite:hover {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+    padding: 14px 0 0;
+    border-top: 1px solid var(--divider-subtle);
+    border-left: 0;
   }
 
   .bid-detail-side .bid-seg,
@@ -8206,8 +8228,8 @@ a.chat-cite:hover {
   margin: 4px 0 2px;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -8360,4 +8382,973 @@ button.bid-chevron svg {
 .chat-icon-button:disabled {
   cursor: default;
   opacity: 0.35;
+}
+
+/* ---------- Bid prep: Plan · Price · Proposal tabs ---------- */
+
+.bid-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--divider);
+}
+
+.bid-tabs button {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: flex-start;
+  margin-bottom: -1px;
+  padding: 8px 16px 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  background: transparent;
+  text-align: left;
+}
+
+.bid-tabs button b {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.bid-tabs button small {
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+.bid-tabs button:hover {
+  color: var(--text);
+}
+
+.bid-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--dark);
+  color: var(--text);
+}
+
+.bid-tabs button[aria-selected="true"] small {
+  color: var(--text-muted);
+}
+
+.bid-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* From a task to its tab */
+.bid-workbench {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.bid-workbench b {
+  color: var(--dark);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bid-workbench:hover b {
+  text-decoration: underline;
+}
+
+/* ---------- Price simulator ---------- */
+
+.price {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+.price-loading {
+  gap: 12px;
+}
+
+.price-readout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: 8px 20px;
+  align-items: end;
+}
+
+.price-readout > div:not(.price-status) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.price-readout span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.price-readout b {
+  color: var(--text);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.price-readout b small {
+  color: var(--text-faint);
+  font-size: 15px;
+}
+
+.price-readout > div > small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.price-status {
+  align-self: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.price-status-ok {
+  color: var(--success-text);
+  background: var(--success-surface);
+}
+
+.price-status-warn {
+  color: var(--info);
+  background: var(--info-surface);
+}
+
+.price-status-bad {
+  color: var(--error);
+  background: var(--error-surface);
+}
+
+.price-slider {
+  width: 100%;
+  min-height: 0;
+  height: 6px;
+  margin: 4px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.price-slider::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--dark);
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 1px 3px rgb(36 33 30 / 18%);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.price-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--dark);
+  border-radius: 50%;
+  background: var(--card);
+}
+
+.price-slider:focus-visible {
+  outline: 2px solid var(--accent-light);
+  outline-offset: 6px;
+}
+
+.price-chart {
+  margin: 0;
+}
+
+.price-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.price-zone-risk {
+  fill: var(--error-surface);
+}
+
+.price-zone-cap {
+  fill: var(--chip);
+  opacity: 0.8;
+}
+
+.price-zone-label {
+  fill: var(--error);
+  font-size: 11px;
+}
+
+.price-grid {
+  stroke: var(--divider-subtle);
+  stroke-width: 1;
+}
+
+.price-axis {
+  fill: var(--text-faint);
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 10.5px;
+}
+
+.price-strip-label {
+  font-family: inherit;
+}
+
+.price-line {
+  fill: none;
+  stroke: var(--dark);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.price-typical {
+  stroke: var(--text-faint);
+  stroke-dasharray: 3 3;
+}
+
+.price-mine {
+  stroke: var(--text);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.price-mine-dot {
+  fill: var(--card);
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+.price-sweet {
+  fill: var(--accent-light);
+  stroke: var(--dark);
+  stroke-width: 1.5;
+}
+
+.price-dot-buyer {
+  fill: var(--dark);
+  opacity: 0.75;
+}
+
+.price-dot-similar {
+  fill: var(--accent-light);
+  opacity: 0.8;
+}
+
+.price-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.price-legend span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.price-legend span:last-child {
+  margin-left: auto;
+  color: var(--text-faint);
+}
+
+.price-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.price-key-mine {
+  border: 2px solid var(--text);
+}
+
+.price-key-sweet {
+  border: 1.5px solid var(--dark);
+  background: var(--accent-light);
+}
+
+.price-key-buyer {
+  background: var(--dark);
+}
+
+.price-key-similar {
+  background: var(--accent-light);
+}
+
+.price-legend .price-key-typical {
+  width: 0;
+  height: 11px;
+  border-left: 1.5px dashed var(--text-faint);
+  border-radius: 0;
+}
+
+.price-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.price-picks button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  padding: 8px 12px;
+  border: 1px solid var(--control);
+  border-radius: 8px;
+  color: var(--text-muted);
+  background: var(--card);
+  font-size: 12px;
+  text-align: left;
+}
+
+.price-picks button b {
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.price-picks button:hover,
+.price-picks button[aria-pressed="true"] {
+  border-color: var(--dark);
+}
+
+.price-picks button[aria-pressed="true"] {
+  background: var(--success-surface);
+}
+
+.price-side {
+  gap: 12px;
+}
+
+.price-side .bid-sub {
+  margin: 4px 0 0;
+}
+
+.price-formula {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  color: var(--text-body);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.price-formula p {
+  margin: 0;
+}
+
+.price-formula code {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--chip);
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.price-warn {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--info);
+  background: var(--info-surface);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.price-rule {
+  display: flex;
+  gap: 6px;
+}
+
+.price-rule select {
+  flex: 1;
+}
+
+.price-rule input {
+  flex: 0 0 56px;
+}
+
+.price-rivals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.price-rivals li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.bid-field .price-rivals input {
+  width: 72px;
+  height: 28px;
+}
+
+.price-rivals small {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.price-rival-flag small {
+  color: var(--error);
+}
+
+.price-remove {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-faint);
+  background: transparent;
+  font-size: 11px;
+}
+
+.price-remove:hover {
+  color: var(--text);
+  background: var(--chip);
+}
+
+.bid-field > .link-button,
+.price-reset {
+  align-self: flex-start;
+}
+
+/* ---------- Proposal outline ---------- */
+
+.prop {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.prop-head-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.prop-sub {
+  margin: 4px 0 0;
+  color: var(--text-body);
+  font-size: 13px;
+}
+
+.prop-actions,
+.prop-write {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.prop-write select {
+  width: auto;
+  min-height: 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--control);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--card);
+  font: inherit;
+  font-size: 13px;
+}
+
+.prop-actions .bid-assign,
+.prop-actions .dec-ask {
+  height: 36px;
+  white-space: nowrap;
+}
+
+.dec-ask:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.prop-points {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prop-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.prop-bar-judgement {
+  background: var(--dark);
+}
+
+.prop-bar-formula {
+  background: var(--accent-light);
+}
+
+.prop-bar-price {
+  background: var(--control);
+}
+
+.prop-bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.prop-bar-legend span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.prop-bar-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.prop-bar-legend b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.prop-note {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.prop-draft-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: baseline;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: var(--text-body);
+  background: var(--surface);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.prop-draft-bar > span {
+  flex: 1 1 320px;
+}
+
+.prop-cautions {
+  color: var(--text-secondary);
+}
+
+.prop-add {
+  padding: 0 3px;
+  border-radius: 3px;
+  color: var(--text);
+  background: #f6e7b8;
+}
+
+.prop-body {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.prop-toc {
+  position: sticky;
+  top: calc(var(--header-height) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.prop-toc ol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prop-toc a {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--text-body);
+  text-decoration: none;
+}
+
+.prop-toc a span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prop-toc a b {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.prop-toc a:hover {
+  color: var(--text);
+  background: var(--chip);
+}
+
+.prop-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prop-section {
+  gap: 12px;
+  scroll-margin-top: calc(var(--header-height) + 16px);
+}
+
+#prop-attach {
+  scroll-margin-top: calc(var(--header-height) + 16px);
+}
+
+.prop-section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 16px;
+}
+
+.prop-kind {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prop-section-head h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.prop-pts {
+  align-self: start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--dark);
+  background: var(--success-surface);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.prop-how {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.prop-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.prop-cols > div {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.prop-cols h4 {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.prop-cols ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 16px;
+  color: var(--text-body);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.prop-have ul {
+  padding-left: 0;
+  list-style: none;
+}
+
+.prop-have li::before {
+  content: "✓ ";
+  color: var(--success-text);
+}
+
+.prop-gaps {
+  background: #fdf8e8;
+}
+
+.prop-gaps.prop-gaps {
+  border-color: #efe2b5;
+}
+
+.prop-text {
+  padding: 12px 14px;
+  border-left: 3px solid var(--dark);
+  border-radius: 0 8px 8px 0;
+  background: var(--surface);
+}
+
+.prop-text-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.prop-prose p {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.prop-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.prop-section-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1100px) {
+  .price {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prop-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prop-toc {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .price-readout {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .price-readout b {
+    font-size: 22px;
+  }
+
+  .bid-tabs button {
+    padding: 8px 10px;
+  }
+
+  .bid-tabs button small {
+    display: none;
+  }
+}
+
+/* ---------- "A dedo" check: looks pre-arranged ---------- */
+
+.tag-badge.risk-high {
+  color: var(--error);
+  background: var(--error-surface);
+}
+
+.tag-badge.risk-watch {
+  color: var(--info);
+  background: var(--info-surface);
+}
+
+.risk-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--error);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-body);
+  background: var(--error-surface);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.risk-note.risk-watch {
+  border-left-color: var(--info);
+  background: var(--info-surface);
+}
+
+.risk-note p {
+  margin: 0;
+}
+
+.risk-note-head {
+  color: var(--text-secondary);
+}
+
+.risk-note-head b {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.risk-watch .risk-note-head b {
+  color: var(--info);
+}
+
+.risk-note ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.risk-note li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--text);
+}
+
+.risk-note li small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.risk-note-foot {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.risk-note-compact {
+  gap: 4px;
+  padding: 8px 12px;
+}
+
+.risk-note-compact ul {
+  gap: 2px;
+}
+
+/* Price tab: assumptions fold away unless they need checking */
+.price-assume {
+  display: flex;
+  flex-direction: column;
+}
+
+.price-assume summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  align-items: baseline;
+  list-style: none;
+  cursor: pointer;
+}
+
+.price-assume summary::-webkit-details-marker {
+  display: none;
+}
+
+.price-assume summary::before {
+  content: "▸";
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+.price-assume[open] summary::before {
+  content: "▾";
+}
+
+.price-assume summary .bid-sub {
+  margin: 0;
+}
+
+.price-assume summary small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.price-assume-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+/* Discover list: "checklist ready" as quiet text on the buyer line */
+.feed-checklist {
+  color: var(--success-text);
+}
+
+/* Company: the Fact / Value / Status / Proof header once, above the first open table */
+.ledger-section:has(.ledger:not([hidden])) ~ .ledger-section .ledger-head {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
